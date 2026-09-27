@@ -34,6 +34,7 @@ interface UseShareConfigOptions {
   currentBpm: number
   currentBaseBpm: number
   currentDifficulty: Difficulty
+  currentSequential: boolean
   currentContentPool: ContentPoolItem[]
   customAudio: string | null
   currentBpmAnalysis: BpmAnalysisResult | null
@@ -41,11 +42,12 @@ interface UseShareConfigOptions {
   currentRounds: number
   currentIncreaseSpeed: boolean
   currentSpeedIncreasePercent: number
-  
+
   // State setters for loading configs
   setBpm: (value: number) => void
   setBaseBpm: (value: number) => void
   setDifficulty: (value: Difficulty) => void
+  setSequential: (value: boolean) => void
   setContentPool: (items: ContentPoolItem[]) => void
   setCustomAudio: (url: string | null) => void
   setBpmAnalysis: (analysis: BpmAnalysisResult | null) => void
@@ -97,14 +99,14 @@ function normalizeContentItems(
  */
 function applyConfig(
   config: ShareConfig,
-  setters: Pick<UseShareConfigOptions, 
-    'setBpm' | 'setBaseBpm' | 'setDifficulty' | 'setContentPool' |
-    'setCustomAudio' | 'setBpmAnalysis' | 'setRounds' | 
+  setters: Pick<UseShareConfigOptions,
+    'setBpm' | 'setBaseBpm' | 'setDifficulty' | 'setSequential' | 'setContentPool' |
+    'setCustomAudio' | 'setBpmAnalysis' | 'setRounds' |
     'setIncreaseSpeed' | 'setSpeedIncreasePercent'
   >
 ) {
   const {
-    setBpm, setBaseBpm, setDifficulty, setContentPool,
+    setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
     setCustomAudio, setBpmAnalysis, setRounds,
     setIncreaseSpeed, setSpeedIncreasePercent
   } = setters
@@ -124,7 +126,12 @@ function applyConfig(
   if (config.difficulty && validateDifficulty(config.difficulty)) {
     setDifficulty(config.difficulty)
   }
-  
+
+  // Sequential (fixed-order) playback has no UI toggle, so it must be reset
+  // explicitly on every load rather than only when present.
+  setSequential(!!config.sequential)
+
+
   // Normalize and apply content (supports legacy 'images' format)
   const contentItems = config.content || config.images
   if (contentItems) {
@@ -170,6 +177,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
     currentBpm,
     currentBaseBpm,
     currentDifficulty,
+    currentSequential,
     currentContentPool,
     customAudio,
     currentBpmAnalysis,
@@ -180,6 +188,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
     setBpm,
     setBaseBpm,
     setDifficulty,
+    setSequential,
     setContentPool,
     setCustomAudio,
     setBpmAnalysis,
@@ -201,6 +210,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
         bpm: currentBpm,
         baseBpm: currentBaseBpm,
         difficulty: currentDifficulty,
+        sequential: currentSequential,
         content: currentContentPool,
         audio: customAudio,
         bpmAnalysis: currentBpmAnalysis,
@@ -226,7 +236,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
       throw new Error('Failed to generate share link')
     }
   }, [
-    currentBpm, currentBaseBpm, currentDifficulty, currentContentPool,
+    currentBpm, currentBaseBpm, currentDifficulty, currentSequential, currentContentPool,
     customAudio, currentBpmAnalysis, currentAudioStartTime,
     currentRounds, currentIncreaseSpeed, currentSpeedIncreasePercent
   ])
@@ -247,7 +257,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
       const configParam = sanitizeUrlParam(configParamRaw)
       
       const setters = {
-        setBpm, setBaseBpm, setDifficulty, setContentPool,
+        setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
         setCustomAudio, setBpmAnalysis, setRounds,
         setIncreaseSpeed, setSpeedIncreasePercent
       }
@@ -316,7 +326,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
       }
     }
   }, [
-    setBpm, setBaseBpm, setDifficulty, setContentPool,
+    setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
     setCustomAudio, setBpmAnalysis, setRounds,
     setIncreaseSpeed, setSpeedIncreasePercent, setCountdownDuration
   ])
@@ -333,7 +343,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
       }
       
       const setters = {
-        setBpm, setBaseBpm, setDifficulty, setContentPool,
+        setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
         setCustomAudio, setBpmAnalysis, setRounds,
         setIncreaseSpeed, setSpeedIncreasePercent
       }
@@ -353,7 +363,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
       throw error
     }
   }, [
-    setBpm, setBaseBpm, setDifficulty, setContentPool,
+    setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
     setCustomAudio, setBpmAnalysis, setRounds,
     setIncreaseSpeed, setSpeedIncreasePercent
   ])

@@ -39,3 +39,7 @@ CLAUDE.local.md
 .playwright-mcp/
 .claude/settings.local.json
 temp_docs/
+
+# Personal one-off seed scripts — depend on gitignored temp_docs/round-tiles-default assets
+scripts/seed-tongue-twisters-build.cjs
+scripts/seed-tongue-twisters-insert.cjs

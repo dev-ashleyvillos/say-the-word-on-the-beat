@@ -82,11 +82,16 @@ export function generateRandomEmojiGrid(difficulty: Difficulty): GridItem[] {
  * @param difficulty - Determines repeat patterns
  */
 export function generateGridFromPool(
-  items: ContentPoolItem[], 
-  difficulty: Difficulty
+  items: ContentPoolItem[],
+  difficulty: Difficulty,
+  sequential?: boolean
 ): GridItem[] {
   if (items.length === 0) {
     return generateRandomEmojiGrid(difficulty)
+  }
+
+  if (sequential) {
+    return items.map(item => ({ content: item.content, type: item.type, word: item.word }))
   }
 
   const result: GridItem[] = []
