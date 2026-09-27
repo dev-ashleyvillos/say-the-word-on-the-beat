@@ -32,3 +32,10 @@ pids
 .devcontainer/
 
 .spark-workbench-id
+
+# Custom
+CLAUDE.local.md
+.claude/
+.playwright-mcp/
+.claude/settings.local.json
+temp_docs/

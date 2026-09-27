@@ -59,30 +59,34 @@ The application will be available at `http://localhost:5173` (or the port Vite a
 For containerized deployment using Docker:
 
 ```bash
-# Development (with hot reload and debugging)
-npm run docker:dev
+# Reads ENV from .env (defaults to "development" if unset or no .env exists)
+npm run docker:up
 
-# Production (optimized with health checks)
-npm run docker:prod
+# Force a specific environment regardless of .env
+npm run docker:dev   # hot reload, debugger port, mongo-express
+npm run docker:prod  # health checks, no debug tooling
 
-# Stop all containers
+# Stop containers (uses the same ENV-selected override as docker:up)
 npm run docker:down
 
-# View logs
+# View logs (same override selection)
 npm run docker:logs
 
 # The application will be available at http://localhost:8091
 # API available at http://localhost:3847
 ```
 
+`docker-compose.yml` is the shared base; `docker-compose.dev.yml` and `docker-compose.prod.yml` are overrides applied on top of it — they only contain what differs. Set `ENV=production` in `.env` (see `.env.example`) to make `docker:up`/`docker:down`/`docker:logs` target production without passing flags.
+
 #### Docker NPM Scripts
 
 | Script | Description |
 |--------|-------------|
+| `npm run docker:up` | Start using the override picked from `.env`'s `ENV` (default: development) |
 | `npm run docker:dev` | Start development with rebuild |
 | `npm run docker:prod` | Start production with rebuild |
-| `npm run docker:down` | Stop all containers |
-| `npm run docker:logs` | Follow container logs |
+| `npm run docker:down` | Stop containers (ENV-aware) |
+| `npm run docker:logs` | Follow container logs (ENV-aware) |
 
 #### Container Architecture
 

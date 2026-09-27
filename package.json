@@ -10,10 +10,11 @@
         "lint": "eslint .",
         "optimize": "vite optimize",
         "preview": "vite preview",
-        "docker:dev": "docker-compose -f docker-compose.dev.yml up -d --build --force-recreate",
-        "docker:prod": "docker-compose -f docker-compose.prod.yml up -d --build --force-recreate",
-        "docker:down": "docker-compose down",
-        "docker:logs": "docker-compose logs -f"
+        "docker:up": "bash scripts/docker-env.sh up -d --build --force-recreate",
+        "docker:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate",
+        "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --force-recreate",
+        "docker:down": "bash scripts/docker-env.sh down",
+        "docker:logs": "bash scripts/docker-env.sh logs -f"
     },
     "dependencies": {
         "@github/spark": ">=0.43.1 <1",

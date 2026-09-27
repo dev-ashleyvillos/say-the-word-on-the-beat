@@ -1,6 +1,7 @@
-# Default docker-compose - uses development settings
-# For production: docker-compose -f docker-compose.prod.yml up -d
-# For development: docker-compose -f docker-compose.dev.yml up -d
+# Shared base config. Not meant to be run alone — combine with an override:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+# Or just use `npm run docker:up`, which reads ENV from .env and picks for you.
 
 services:
   web:
@@ -10,13 +11,13 @@ services:
     container_name: say-the-word-on-beat
     ports:
       - "8091:80"
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=development
     depends_on:
       - api
     networks:
       - app-network
+    labels:
+      - "com.say-the-word-on-beat.description=Say the Word on Beat Web Application"
+      - "com.say-the-word-on-beat.version=1.0"
 
   api:
     build:
@@ -25,27 +26,27 @@ services:
     container_name: say-the-word-api
     ports:
       - "3847:3001"
-    restart: unless-stopped
     environment:
-      - NODE_ENV=development
-      - PORT=3001
-      - MONGODB_URI=mongodb://mongo:27017/saytheword
-      - CORS_ORIGIN=http://localhost:8091
+      PORT: 3001
+      MONGODB_URI: mongodb://mongo:27017/saytheword
+      STALE_DAYS: 7
     depends_on:
       - mongo
     networks:
       - app-network
+    labels:
+      - "com.say-the-word-on-beat.description=Say the Word on Beat API Server"
 
   mongo:
     image: mongo:7
     container_name: say-the-word-mongo
-    restart: unless-stopped
-    ports:
-      - "27847:27017"
     volumes:
       - mongo-data:/data/db
+      - mongo-config:/data/configdb
     networks:
       - app-network
+    labels:
+      - "com.say-the-word-on-beat.description=MongoDB Database"
 
 networks:
   app-network:
@@ -53,4 +54,8 @@ networks:
 
 volumes:
   mongo-data:
+    driver: local
+  mongo-config:
+    driver: local
+  api-logs:
     driver: local

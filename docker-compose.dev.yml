@@ -1,62 +1,29 @@
+# Development overrides. Combine with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
 services:
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: say-the-word-on-beat
-    ports:
-      - "8091:80"
     restart: unless-stopped
     environment:
-      - NODE_ENV=development
-    depends_on:
-      - api
-    networks:
-      - app-network
-    labels:
-      - "com.say-the-word-on-beat.description=Say the Word on Beat Web Application"
-      - "com.say-the-word-on-beat.version=1.0"
+      NODE_ENV: development
 
   api:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    container_name: say-the-word-api
-    ports:
-      - "3847:3001"
-      - "9847:9229"  # Node.js debugger port
     restart: unless-stopped
+    ports:
+      - "9847:9229"  # Node.js debugger port
     environment:
-      - NODE_ENV=development
-      - PORT=3001
-      - MONGODB_URI=mongodb://mongo:27017/saytheword
-      - CORS_ORIGIN=http://localhost:8091
-      - DEBUG=express:*
-      - STALE_DAYS=7  # Days before unused games are cleaned up
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      NODE_ENV: development
+      CORS_ORIGIN: http://localhost:8091
+      DEBUG: "express:*"
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
     volumes:
       - ./server/src:/app/src:ro  # Mount source for easier debugging (read-only)
       - api-logs:/var/log  # Persist cleanup logs
-    depends_on:
-      - mongo
-    networks:
-      - app-network
-    labels:
-      - "com.say-the-word-on-beat.description=Say the Word on Beat API Server"
 
   mongo:
-    image: mongo:7
-    container_name: say-the-word-mongo
     restart: unless-stopped
     ports:
       - "27847:27017"  # Expose MongoDB for direct access/debugging
-    volumes:
-      - mongo-data:/data/db
-      - mongo-config:/data/configdb
-    networks:
-      - app-network
-    labels:
-      - "com.say-the-word-on-beat.description=MongoDB Database"
 
   mongo-express:
     image: mongo-express:latest
@@ -76,15 +43,3 @@ services:
       - app-network
     labels:
       - "com.say-the-word-on-beat.description=MongoDB Admin Interface"
-
-networks:
-  app-network:
-    driver: bridge
-
-volumes:
-  mongo-data:
-    driver: local
-  mongo-config:
-    driver: local
-  api-logs:
-    driver: local

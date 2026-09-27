@@ -1,14 +1,11 @@
+# Production overrides. Combine with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
 services:
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: say-the-word-on-beat
-    ports:
-      - "8091:80"
     restart: always
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
     depends_on:
       api:
         condition: service_healthy
@@ -18,27 +15,13 @@ services:
       timeout: 3s
       start_period: 30s
       retries: 3
-    networks:
-      - app-network
-    labels:
-      - "com.say-the-word-on-beat.description=Say the Word on Beat Web Application"
-      - "com.say-the-word-on-beat.version=1.0"
 
   api:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    container_name: say-the-word-api
-    ports:
-      - "3847:3001"
     restart: always
     environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - MONGODB_URI=mongodb://mongo:27017/saytheword
-      - CORS_ORIGIN=https://saywordsonbeat.com
-      - STALE_DAYS=7  # Days before unused games are cleaned up
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      NODE_ENV: production
+      CORS_ORIGIN: https://saywordsonbeat.com
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     volumes:
       - api-logs:/var/log  # Persist cleanup logs
     depends_on:
@@ -50,28 +33,15 @@ services:
       timeout: 3s
       start_period: 10s
       retries: 3
-    networks:
-      - app-network
-    labels:
-      - "com.say-the-word-on-beat.description=Say the Word on Beat API Server"
 
   mongo:
-    image: mongo:7
-    container_name: say-the-word-mongo
     restart: always
-    volumes:
-      - mongo-data:/data/db
-      - mongo-config:/data/configdb
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 30s
       timeout: 10s
       start_period: 30s
       retries: 3
-    networks:
-      - app-network
-    labels:
-      - "com.say-the-word-on-beat.description=MongoDB Database"
 
   mongo-express:
     image: mongo-express:latest
@@ -92,15 +62,3 @@ services:
       - app-network
     labels:
       - "com.say-the-word-on-beat.description=MongoDB Admin Interface"
-
-networks:
-  app-network:
-    driver: bridge
-
-volumes:
-  mongo-data:
-    driver: local
-  mongo-config:
-    driver: local
-  api-logs:
-    driver: local
