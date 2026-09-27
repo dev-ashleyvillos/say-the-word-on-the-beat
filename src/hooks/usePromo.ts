@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   isBlocked,
   loadRecord,
-  PROMO_IDLE_TRIGGER_MS,
   recordClicked,
   recordDismissed,
   recordShown,
@@ -14,8 +13,8 @@ import { trackPromo } from '@/lib/track'
 
 /**
  * Drives the Gameplayce promo strip (gameplayce.io#1348). All rules live in lib/promo.ts;
- * this hook only feeds it the visit's facts: whether a round was finished,
- * foreground idle time, and what is currently on screen.
+ * this hook only feeds it what is currently on screen. It shows as soon as the
+ * admin setting has loaded and nothing blocks it.
  *
  * Two separate things:
  *   - the impression latch (`shownThisVisit`): set once, when the strip first
@@ -24,26 +23,12 @@ import { trackPromo } from '@/lib/track'
  *     comes back (consent banner re-opened, playback, any dialog) and returns
  *     when it clears, without counting another impression.
  */
-export function usePromo(opts: { enabled: boolean; finishedRound: boolean; blockers: Blockers; isPlaying: boolean }) {
-  const { enabled, finishedRound, blockers, isPlaying } = opts
+export function usePromo(opts: { enabled: boolean; blockers: Blockers }) {
+  const { enabled, blockers } = opts
   const [shown, setShown] = useState(false)
   const [closed, setClosed] = useState(false)
-  const [idleMs, setIdleMs] = useState(0)
   const shownThisVisit = useRef(false)
   const blocked = isBlocked(blockers)
-
-  // Foreground time with nothing else going on. Ticks every 5 s; pauses in
-  // background tabs, during playback and while anything blocks the strip.
-  useEffect(() => {
-    if (shownThisVisit.current) return
-    const tick = 5_000
-    const id = window.setInterval(() => {
-      if (document.visibilityState === 'visible' && !isPlaying && !blocked) {
-        setIdleMs((ms) => Math.min(ms + tick, PROMO_IDLE_TRIGGER_MS))
-      }
-    }, tick)
-    return () => window.clearInterval(id)
-  }, [isPlaying, blocked])
 
   const { consentBannerVisible, playbackVisible, dialogOpen } = blockers
   useEffect(() => {
@@ -54,7 +39,7 @@ export function usePromo(opts: { enabled: boolean; finishedRound: boolean; block
     const record = loadRecord()
     const ok = shouldShowPromo(
       record,
-      { finishedRound, idleForegroundMs: idleMs, shownThisVisit: false },
+      { shownThisVisit: false },
       { consentBannerVisible, playbackVisible, dialogOpen },
       now,
     )
@@ -63,7 +48,7 @@ export function usePromo(opts: { enabled: boolean; finishedRound: boolean; block
     saveRecord(recordShown(record, now))
     setShown(true)
     trackPromo('promo:shown')
-  }, [enabled, finishedRound, idleMs, consentBannerVisible, playbackVisible, dialogOpen])
+  }, [enabled, consentBannerVisible, playbackVisible, dialogOpen])
 
   const dismiss = useCallback(() => {
     saveRecord(recordDismissed(loadRecord(), Date.now()))

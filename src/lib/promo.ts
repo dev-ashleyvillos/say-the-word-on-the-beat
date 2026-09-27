@@ -2,16 +2,16 @@
 //
 // Pure logic, no React and no DOM, so every rule in the issue's table is unit
 // tested (promo.test.ts). The strip is deliberately rare:
-//   - never on first paint: it needs an engagement trigger (a finished round,
-//     or 90 s of foreground time without playback);
-//   - never while the consent banner, the full-screen player or a dialog is up;
+//   - it shows as soon as the page loads — no engagement wait (the operator's
+//     call, 2026-09-27: "show it immediately"; it used to wait for a finished
+//     round or 90 s of idle time);
+//   - never while the privacy panel, the full-screen player or a dialog is up;
 //   - at most once per page visit, at most 3 times ever, not again for 7 days
 //     after an ignored impression;
 //   - × hides it for 90 days; clicking the CTA hides it for good.
 
 export const PROMO_STORAGE_KEY = 'stw.promo';
 export const PROMO_MAX_IMPRESSIONS = 3;
-export const PROMO_IDLE_TRIGGER_MS = 90_000;
 const DAY = 24 * 60 * 60 * 1000;
 export const PROMO_IGNORED_COOLDOWN_MS = 7 * DAY;
 export const PROMO_DISMISS_SNOOZE_MS = 90 * DAY;
@@ -55,10 +55,6 @@ export function isRecordEligible(record: PromoRecord, now: number): boolean {
 }
 
 export interface VisitState {
-  /** A round reached the completion screen during this visit. */
-  finishedRound: boolean;
-  /** Foreground ms on the page while not playing. */
-  idleForegroundMs: number;
   /** Already shown once in this page visit. */
   shownThisVisit: boolean;
 }
@@ -69,10 +65,6 @@ export interface Blockers {
   dialogOpen: boolean;
 }
 
-export function isTriggered(visit: VisitState): boolean {
-  return visit.finishedRound || visit.idleForegroundMs >= PROMO_IDLE_TRIGGER_MS;
-}
-
 export function isBlocked(b: Blockers): boolean {
   return b.consentBannerVisible || b.playbackVisible || b.dialogOpen;
 }
@@ -80,7 +72,6 @@ export function isBlocked(b: Blockers): boolean {
 /** Should the strip appear now? */
 export function shouldShowPromo(record: PromoRecord, visit: VisitState, blockers: Blockers, now: number): boolean {
   if (visit.shownThisVisit) return false;
-  if (!isTriggered(visit)) return false;
   if (isBlocked(blockers)) return false;
   return isRecordEligible(record, now);
 }

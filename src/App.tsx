@@ -95,8 +95,6 @@ function App() {
   const [displayBpm, setDisplayBpm] = useState<number>(DEFAULT_BPM)
   const [isFinished, setIsFinished] = useState(false)
   const [isAppearancePhase, setIsAppearancePhase] = useState(false)
-  // gameplayce.io#1348: a round reached the completion screen during this visit.
-  const [finishedRound, setFinishedRound] = useState(false)
 
   // ==========================================================================
   // Audio Refs
@@ -296,20 +294,13 @@ function App() {
     setGridItems(newGrid)
   }, [currentDifficulty, currentContentPool, setGridItems])
 
-  useEffect(() => {
-    if (isFinished) setFinishedRound(true)
-  }, [isFinished])
-
-  // gameplayce.io#1348: Gameplayce promo. The promo waits until the
-  // visitor has engaged and nothing else is on screen (rules: lib/promo.ts).
+  // gameplayce.io#1348: Gameplayce promo. Shows on load, whenever nothing
+  // else is on screen (rules: lib/promo.ts).
   const privacySettingsOpen = usePrivacySettingsOpen()
   const anyDialogOpen = useAnyDialogOpen()
   const promoEnabled = usePromoEnabled()
   const promo = usePromo({
     enabled: promoEnabled,
-    // Only once the visitor is back from the full-screen player.
-    finishedRound: finishedRound && !isFullscreen,
-    isPlaying,
     blockers: {
       // The privacy settings panel (opt-out since 2026-09-26) is open.
       consentBannerVisible: privacySettingsOpen,
