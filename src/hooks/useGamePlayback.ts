@@ -25,6 +25,7 @@ interface UseGamePlaybackOptions {
   currentBaseBpm: number
   currentRounds: number
   currentDifficulty: Difficulty
+  currentSequential: boolean
   currentContentPool: ContentPoolItem[]
   currentIncreaseSpeed: boolean
   currentSpeedIncreasePercent: number
@@ -58,6 +59,7 @@ export function useGamePlayback(options: UseGamePlaybackOptions) {
     currentBaseBpm,
     currentRounds,
     currentDifficulty,
+    currentSequential,
     currentContentPool,
     currentIncreaseSpeed,
     currentSpeedIncreasePercent,
@@ -250,7 +252,7 @@ export function useGamePlayback(options: UseGamePlaybackOptions) {
           }
           
           // Start new round with fresh grid
-          const newGrid = generateGridFromPool(currentContentPool, currentDifficulty)
+          const newGrid = generateGridFromPool(currentContentPool, currentDifficulty, currentSequential)
           setGridItems(newGrid)
           currentGridSize = newGrid.length
           
@@ -297,7 +299,7 @@ export function useGamePlayback(options: UseGamePlaybackOptions) {
     intervalRef.current = window.setInterval(playSequence, initialInterval)
   }, [
     customAudio, customAudioRef, defaultAudioRef, completeSoundRef,
-    currentBpmAnalysis, currentRounds, currentContentPool, currentDifficulty,
+    currentBpmAnalysis, currentRounds, currentContentPool, currentDifficulty, currentSequential,
     displayedGridItems.length, calculateRoundBpm, calculatePlaybackSpeed,
     setIsPlaying, setRevealedIndices, setDisplayBpm, setActiveIndex,
     setIsFinished, setGridItems, setCurrentRound, setIsAppearancePhase

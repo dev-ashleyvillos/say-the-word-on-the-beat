@@ -85,6 +85,8 @@ function App() {
   // ==========================================================================
   
   const [isPlaying, setIsPlaying] = useState(false)
+  // Fixed-order playback (no UI toggle; only ever set by loading a share config)
+  const [sequential, setSequential] = useState(false)
   const [communityRefreshKey, setCommunityRefreshKey] = useState(0)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [revealedIndices, setRevealedIndices] = useState<Set<number>>(new Set())
@@ -136,8 +138,8 @@ function App() {
   
   // Fallback grid when no items are persisted
   const fallbackGridItems = useMemo(() => {
-    return generateGridFromPool(currentContentPool, currentDifficulty)
-  }, [currentContentPool, currentDifficulty])
+    return generateGridFromPool(currentContentPool, currentDifficulty, sequential)
+  }, [currentContentPool, currentDifficulty, sequential])
   
   const displayedGridItems = (gridItems && gridItems.length > 0) ? gridItems : fallbackGridItems
 
@@ -171,6 +173,7 @@ function App() {
     currentBaseBpm,
     currentRounds,
     currentDifficulty,
+    currentSequential: sequential,
     currentContentPool,
     currentIncreaseSpeed,
     currentSpeedIncreasePercent,
@@ -202,6 +205,7 @@ function App() {
     currentBpm,
     currentBaseBpm,
     currentDifficulty,
+    currentSequential: sequential,
     currentContentPool,
     customAudio: customAudio ?? null,
     currentBpmAnalysis,
@@ -212,6 +216,7 @@ function App() {
     setBpm,
     setBaseBpm,
     setDifficulty,
+    setSequential,
     setContentPool,
     setCustomAudio,
     setBpmAnalysis,
@@ -288,11 +293,11 @@ function App() {
     }
   }, [currentBpm])
 
-  // Regenerate grid when difficulty or content changes
+  // Regenerate grid when difficulty, content, or sequential mode changes
   useEffect(() => {
-    const newGrid = generateGridFromPool(currentContentPool, currentDifficulty)
+    const newGrid = generateGridFromPool(currentContentPool, currentDifficulty, sequential)
     setGridItems(newGrid)
-  }, [currentDifficulty, currentContentPool, setGridItems])
+  }, [currentDifficulty, currentContentPool, sequential, setGridItems])
 
   // gameplayce.io#1348: Gameplayce promo. Shows on load, whenever nothing
   // else is on screen (rules: lib/promo.ts).
