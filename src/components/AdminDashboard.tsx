@@ -644,7 +644,7 @@ function SettingsPanel({ password }: { password: string }) {
           <p className="text-sm text-muted-foreground mt-1">
             The small &ldquo;Make your own rounds with AI&rdquo; strip that points players to Say the
             Word on Beat on gameplayce.io. It shows only after a finished round (or 90&nbsp;s on the
-            page), at most once per visit. Switching it off hides it for everyone right away.
+            page), at most once per visit. Switching it off hides it for every visitor from their next page load.
           </p>
         </div>
         <Switch

@@ -79,6 +79,14 @@ export function PublicGamesPanel({ onLoadGame, refreshKey }: PublicGamesPanelPro
     }
   }, [pagination, isLoadingMore, fetchShares, sortMode])
 
+  // Below xl the panel is not its own scroll area (the page scrolls instead),
+  // so the scroll handler above never fires there: offer an explicit button.
+  const handleLoadMore = useCallback(() => {
+    if (!pagination.hasMore || isLoadingMore || loadingRef.current) return
+    setIsLoadingMore(true)
+    fetchShares(pagination.page + 1, true, sortMode)
+  }, [pagination, isLoadingMore, fetchShares, sortMode])
+
   const handleSortChange = (mode: SortMode) => {
     if (mode === sortMode) return
     setSortMode(mode)
@@ -236,6 +244,14 @@ export function PublicGamesPanel({ onLoadGame, refreshKey }: PublicGamesPanelPro
             {isLoadingMore && (
               <div className="flex items-center justify-center py-4">
                 <ArrowClockwise size={20} weight="bold" className="animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {pagination.hasMore && !isLoadingMore && (
+              <div className="xl:hidden flex justify-center pt-1">
+                <Button variant="outline" className="h-11 px-6" onClick={handleLoadMore} data-testid="community-load-more">
+                  Load more games
+                </Button>
               </div>
             )}
 

@@ -17,8 +17,8 @@ if (wasCleared) {
   console.log('[App] Local storage was cleared due to inactivity. Starting fresh.')
 }
 
-// Analytics is opt-in: <Analytics /> loads nothing until the visitor accepts
-// in the consent banner (gameplayce.io #1348).
+// Analytics is opt-out (legitimate interest): <Analytics /> loads the tracker
+// unless the visitor switched it off or the browser sends Global Privacy Control.
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
     <Analytics />
