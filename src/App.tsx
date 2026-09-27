@@ -403,19 +403,11 @@ function App() {
         {/* Footer */}
         <footer className="text-center text-sm text-muted-foreground space-y-2">
           <p>
-            Made with ❤️ by{' '}
-            <a 
-              href="https://superstatus.io" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              TerianSilva
-            </a>
+            Made with ❤️ by ashleyvillos
             {' '}|{' '}
-            <a 
-              href="https://github.com/teriansilva/say-the-word-on-the-beat" 
-              target="_blank" 
+            <a
+              href="https://github.com/dev-ashleyvillos/say-the-word-on-the-beat"
+              target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
             >

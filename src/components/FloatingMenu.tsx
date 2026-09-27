@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { PlayCircle, PauseCircle, ShareNetwork, Coffee, CaretDown, CaretUp, ArrowCounterClockwise } from '@phosphor-icons/react'
+import { PlayCircle, PauseCircle, ShareNetwork, CaretDown, CaretUp, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertDialog,
@@ -47,16 +47,6 @@ export function FloatingMenu({ isPlaying, hasCustomizations, onPlayPause, onShar
                 <PlayCircle size={54} weight="fill" />
               )}
             </Button>
-            
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-12 w-12 rounded-xl p-0 bg-[#FFDD00] hover:bg-[#FFDD00]/90 border-2 border-[#000000]"
-              onClick={() => window.open('https://buymeacoffee.com/teriansilva', '_blank')}
-            >
-              <Coffee size={24} weight="fill" className="text-[#000000]" />
-            </Button>
-            
             <Button
               size="lg"
               variant="secondary"
