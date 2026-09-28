@@ -43,3 +43,5 @@ temp_docs/
 # Personal one-off seed scripts — depend on gitignored temp_docs/round-tiles-default assets
 scripts/seed-tongue-twisters-build.cjs
 scripts/seed-tongue-twisters-insert.cjs
+scripts/seed-tongue-twisters-grouped-build.cjs
+scripts/seed-tongue-twisters-grouped-insert.cjs

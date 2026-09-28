@@ -8,13 +8,14 @@
 import { useRef, useCallback } from 'react'
 import { toast } from 'sonner'
 import { getBpmAtTime, type BpmAnalysisResult } from '@/lib/bpmAnalyzer'
-import { generateGridFromPool } from '@/lib/gridGenerator'
-import { 
-  calculateBeatInterval, 
-  BPM_CHECK_INTERVAL, 
+import { generateGridFromPool, chunkContentPool, isSequentialPoolSizeValid } from '@/lib/gridGenerator'
+import {
+  calculateBeatInterval,
+  BPM_CHECK_INTERVAL,
   BPM_CHANGE_THRESHOLD,
   BASE_SPEED_MULTIPLIER,
-  DEFAULT_BPM 
+  DEFAULT_BPM,
+  GRID_SIZE
 } from '@/lib/constants'
 import type { GridItem, Difficulty } from '@/lib/types'
 import type { ContentPoolItem } from '@/components/ContentPoolManager'
@@ -140,7 +141,12 @@ export function useGamePlayback(options: UseGamePlaybackOptions) {
     let index = -1
     let roundCount = 1
     let isInAppearancePhase = true // Local tracking for the closure
-    
+
+    // Fixed Order plays a round as one or more GRID_SIZE-sized chunks in
+    // sequence; chunkIndex only advances the round once the last chunk finishes.
+    const sequentialChunks = currentSequential ? chunkContentPool(currentContentPool) : null
+    let chunkIndex = 0
+
     const audioRef = customAudio ? customAudioRef : defaultAudioRef
     
     const initialBpm = calculateRoundBpm(roundCount, 0)
@@ -203,10 +209,23 @@ export function useGamePlayback(options: UseGamePlaybackOptions) {
           setIsAppearancePhase(false)
           // Don't reset revealedIndices - keep all cards visible
           // index is already 0, so we start highlighting from the beginning
+        } else if (sequentialChunks && chunkIndex < sequentialChunks.length - 1) {
+          // Finished this chunk's highlight phase, but more chunks remain in
+          // this round - advance the chunk without touching the round count.
+          chunkIndex++
+          const nextChunk = sequentialChunks[chunkIndex]
+          const newGrid = nextChunk.map(item => ({ content: item.content, type: item.type, word: item.word }))
+          setGridItems(newGrid)
+          currentGridSize = newGrid.length
+
+          setRevealedIndices(new Set())
+          isInAppearancePhase = true
+          setIsAppearancePhase(true)
         } else {
-          // Finished highlight phase, increment round
+          // Finished the last (or only) chunk - the round is complete
+          chunkIndex = 0
           roundCount++
-          
+
           // Check if game is complete
           if (roundCount > currentRounds) {
             // Game complete!
@@ -221,14 +240,14 @@ export function useGamePlayback(options: UseGamePlaybackOptions) {
             setIsPlaying(false)
             setActiveIndex(null)
             setIsFinished(true)
-            
+
             // Fade out the music over 1 second
             if (audioRef.current) {
               const audio = audioRef.current
               const fadeInterval = 50 // Update every 50ms
               const fadeSteps = 1000 / fadeInterval // 20 steps over 1 second
               const volumeStep = audio.volume / fadeSteps
-              
+
               const fadeOut = setInterval(() => {
                 if (audio.volume > volumeStep) {
                   audio.volume -= volumeStep
@@ -240,38 +259,38 @@ export function useGamePlayback(options: UseGamePlaybackOptions) {
                 }
               }, fadeInterval)
             }
-            
+
             // Play completion sound
             if (completeSoundRef.current) {
               completeSoundRef.current.currentTime = 0
-              completeSoundRef.current.play().catch(err => 
+              completeSoundRef.current.play().catch(err =>
                 console.debug('Complete sound play error:', err)
               )
             }
             return
           }
-          
-          // Start new round with fresh grid
+
+          // Start new round with fresh grid (first chunk, for Fixed Order)
           const newGrid = generateGridFromPool(currentContentPool, currentDifficulty, currentSequential)
           setGridItems(newGrid)
           currentGridSize = newGrid.length
-          
+
           // Reset for new round - start with appearance phase again
           setRevealedIndices(new Set())
           setCurrentRound(roundCount)
           isInAppearancePhase = true
           setIsAppearancePhase(true)
-          
+
           // Update playback speed for new round
           if (audioRef.current) {
             audioRef.current.playbackRate = calculatePlaybackSpeed(roundCount)
           }
-          
+
           // Update interval for non-analyzed audio
           if (!(customAudio && currentBpmAnalysis)) {
             const newBpm = calculateRoundBpm(roundCount)
             setDisplayBpm(Math.round(newBpm))
-            
+
             if (intervalRef.current) {
               clearInterval(intervalRef.current)
             }
@@ -312,6 +331,12 @@ export function useGamePlayback(options: UseGamePlaybackOptions) {
     // Validate countdown duration
     if (currentCountdownDuration < 0.5) {
       toast.error('Invalid countdown duration')
+      return
+    }
+
+    // Fixed Order pools over GRID_SIZE must divide evenly into GRID_SIZE-sized rounds
+    if (currentSequential && !isSequentialPoolSizeValid(currentContentPool.length)) {
+      toast.error(`Fixed Order needs a multiple of ${GRID_SIZE} items (currently ${currentContentPool.length})`)
       return
     }
 
@@ -367,6 +392,7 @@ export function useGamePlayback(options: UseGamePlaybackOptions) {
     }, intervalTime)
   }, [
     currentCountdownDuration, currentAudioStartTime, currentBpmAnalysis,
+    currentSequential, currentContentPool,
     customAudio, customAudioRef, defaultAudioRef, calculatePlaybackSpeed,
     setIsFullscreen, setCurrentRound, setCountdown, beginPlayback,
     setIsAppearancePhase, setRevealedIndices, setIsFinished

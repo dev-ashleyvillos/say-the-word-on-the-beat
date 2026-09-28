@@ -26,6 +26,37 @@ export function shuffleArray<T>(array: T[]): T[] {
 }
 
 // ============================================================================
+// Fixed Order Chunking
+// ============================================================================
+
+/**
+ * Split a content pool into GRID_SIZE-sized chunks for Fixed Order playback.
+ * Each chunk becomes one "leg" of a round; callers should validate the pool
+ * size with isSequentialPoolSizeValid before relying on even chunks.
+ */
+export function chunkContentPool(
+  items: ContentPoolItem[],
+  chunkSize: number = GRID_SIZE
+): ContentPoolItem[][] {
+  if (items.length <= chunkSize) return [items]
+
+  const chunks: ContentPoolItem[][] = []
+  for (let i = 0; i < items.length; i += chunkSize) {
+    chunks.push(items.slice(i, i + chunkSize))
+  }
+  return chunks
+}
+
+/**
+ * Fixed Order plays through the pool in chunks of GRID_SIZE, so once the pool
+ * exceeds GRID_SIZE it must divide evenly - otherwise the last chunk would be
+ * a partial, out-of-order leftover.
+ */
+export function isSequentialPoolSizeValid(poolSize: number): boolean {
+  return poolSize <= GRID_SIZE || poolSize % GRID_SIZE === 0
+}
+
+// ============================================================================
 // Grid Generation
 // ============================================================================
 
@@ -91,7 +122,10 @@ export function generateGridFromPool(
   }
 
   if (sequential) {
-    return items.map(item => ({ content: item.content, type: item.type, word: item.word }))
+    // Only the first chunk is shown here; useGamePlayback advances through
+    // the remaining chunks as the round plays out.
+    const firstChunk = items.length > GRID_SIZE ? items.slice(0, GRID_SIZE) : items
+    return firstChunk.map(item => ({ content: item.content, type: item.type, word: item.word }))
   }
 
   const result: GridItem[] = []
