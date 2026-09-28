@@ -96,6 +96,11 @@ function App() {
   const [revealedIndices, setRevealedIndices] = useState<Set<number>>(new Set())
   const [currentRound, setCurrentRound] = useState(0)
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  // Tracks which saved game (if any) is currently loaded, so edits can be
+  // saved back onto it instead of always minting a new share link.
+  const [loadedGuid, setLoadedGuid] = useState<string | null>(() => {
+    return new URLSearchParams(window.location.search).get('share')
+  })
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [countdown, setCountdown] = useState<number | null>(null)
   const [displayBpm, setDisplayBpm] = useState<number>(DEFAULT_BPM)
@@ -207,7 +212,7 @@ function App() {
   // Share Config Hook
   // ==========================================================================
   
-  const { generateShareLink, loadFromUrl, loadPublicGame } = useShareConfig({
+  const { generateShareLink, updateSharedGame, loadFromUrl, loadPublicGame } = useShareConfig({
     currentBpm,
     currentBaseBpm,
     currentDifficulty,
@@ -271,6 +276,16 @@ function App() {
     setShareModalOpen(true)
   }
 
+  const handleSaveClick = async () => {
+    if (!loadedGuid) return
+    try {
+      await updateSharedGame(loadedGuid)
+      toast.success('Changes saved!')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save changes')
+    }
+  }
+
   const handleResetClick = async () => {
     await resetAllSettings()
     toast.success('Game reset! Reloading...')
@@ -285,11 +300,13 @@ function App() {
     await loadPublicGame(guid)
     window.history.pushState(null, '', `${window.location.pathname}?share=${guid}`)
     setShowDashboard(false)
+    setLoadedGuid(guid)
   }
 
   const handleBrowseRoundsClick = () => {
     window.history.pushState(null, '', window.location.pathname)
     setShowDashboard(true)
+    setLoadedGuid(null)
   }
 
   // ==========================================================================
@@ -311,11 +328,14 @@ function App() {
 
       if (shareId) {
         setShowDashboard(false)
-        loadPublicGame(shareId).catch(() => {
-          toast.error('Failed to load game')
-        })
+        loadPublicGame(shareId)
+          .then(() => setLoadedGuid(shareId))
+          .catch(() => {
+            toast.error('Failed to load game')
+          })
       } else {
         setShowDashboard(true)
+        setLoadedGuid(null)
       }
     }
 
@@ -505,8 +525,10 @@ function App() {
         <FloatingMenu
           isPlaying={isPlaying}
           hasCustomizations={hasCustomizations}
+          hasLoadedGame={!!loadedGuid}
           onPlayPause={handlePlayPause}
           onShareClick={handleShareClick}
+          onSaveClick={handleSaveClick}
           onResetClick={handleResetClick}
         />
       )}

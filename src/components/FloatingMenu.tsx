@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { PlayCircle, PauseCircle, ShareNetwork, CaretDown, CaretUp, ArrowCounterClockwise } from '@phosphor-icons/react'
+import { PlayCircle, PauseCircle, ShareNetwork, FloppyDisk, CaretDown, CaretUp, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertDialog,
@@ -17,12 +17,14 @@ import {
 interface FloatingMenuProps {
   isPlaying: boolean
   hasCustomizations: boolean
+  hasLoadedGame: boolean
   onPlayPause: () => void
   onShareClick: () => void
+  onSaveClick: () => void
   onResetClick: () => void
 }
 
-export function FloatingMenu({ isPlaying, hasCustomizations, onPlayPause, onShareClick, onResetClick }: FloatingMenuProps) {
+export function FloatingMenu({ isPlaying, hasCustomizations, hasLoadedGame, onPlayPause, onShareClick, onSaveClick, onResetClick }: FloatingMenuProps) {
   const [isExpanded, setIsExpanded] = useState(true)
 
   return (
@@ -55,7 +57,18 @@ export function FloatingMenu({ isPlaying, hasCustomizations, onPlayPause, onShar
             >
               <ShareNetwork size={24} weight="fill" />
             </Button>
-            
+
+            {hasLoadedGame && (
+              <Button
+                size="lg"
+                variant="secondary"
+                className="h-12 w-12 rounded-xl p-0"
+                onClick={onSaveClick}
+              >
+                <FloppyDisk size={24} weight="fill" />
+              </Button>
+            )}
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button

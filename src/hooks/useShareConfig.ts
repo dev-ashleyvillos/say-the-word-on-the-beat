@@ -230,6 +230,32 @@ export function useShareConfig(options: UseShareConfigOptions) {
   ])
 
   /**
+   * Save current game configuration back onto an already-loaded share (Save Changes),
+   * rather than creating a new one.
+   */
+  const updateSharedGame = useCallback(async (guid: string): Promise<void> => {
+    const config: ShareConfig = {
+      bpm: currentBpm,
+      baseBpm: currentBaseBpm,
+      difficulty: currentDifficulty,
+      sequential: currentSequential,
+      content: currentContentPool,
+      audio: customAudio,
+      bpmAnalysis: currentBpmAnalysis,
+      audioStartTime: currentAudioStartTime,
+      rounds: currentRounds,
+      increaseSpeed: currentIncreaseSpeed,
+      speedIncreasePercent: currentSpeedIncreasePercent
+    }
+
+    await shareApi.update(guid, config as unknown as Record<string, unknown>)
+  }, [
+    currentBpm, currentBaseBpm, currentDifficulty, currentSequential, currentContentPool,
+    customAudio, currentBpmAnalysis, currentAudioStartTime,
+    currentRounds, currentIncreaseSpeed, currentSpeedIncreasePercent
+  ])
+
+  /**
    * Load game configuration from URL parameters.
    * Supports both ?share=GUID and legacy ?config=BASE64 formats.
    */
@@ -358,6 +384,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
 
   return {
     generateShareLink,
+    updateSharedGame,
     loadFromUrl,
     loadPublicGame,
     hasLoadedFromUrl,
