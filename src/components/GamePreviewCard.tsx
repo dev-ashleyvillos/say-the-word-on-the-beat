@@ -144,8 +144,10 @@ export function GamePreviewCard({ share, onLike, onLoad, onRename, onDelete, isL
   const difficultyColors: Record<string, string> = {
     easy: 'bg-green-500/20 text-green-700 dark:text-green-400',
     medium: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
-    hard: 'bg-red-500/20 text-red-700 dark:text-red-400'
+    hard: 'bg-red-500/20 text-red-700 dark:text-red-400',
+    fixed: 'bg-blue-500/20 text-blue-700 dark:text-blue-400'
   }
+  const isFixedOrder = !!preview?.sequential
 
   const formattedDate = new Date(share.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -262,9 +264,12 @@ export function GamePreviewCard({ share, onLike, onLoad, onRename, onDelete, isL
         </Badge>
         <Badge
           variant="secondary"
-          className={cn('text-xs capitalize', difficultyColors[preview?.difficulty || 'medium'])}
+          className={cn(
+            'text-xs capitalize',
+            isFixedOrder ? difficultyColors.fixed : difficultyColors[preview?.difficulty || 'medium']
+          )}
         >
-          {preview?.difficulty || 'medium'}
+          {isFixedOrder ? 'Fixed Order' : (preview?.difficulty || 'medium')}
         </Badge>
         {preview?.hasCustomAudio && (
           <Badge variant="secondary" className="text-xs gap-1 bg-purple-500/20 text-purple-700 dark:text-purple-400">
