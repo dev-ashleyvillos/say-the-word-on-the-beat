@@ -241,6 +241,50 @@ router.post('/',
   }
 });
 
+// PATCH /api/shares/:guid - Update an existing share's config (Save Changes)
+// No creator/session check: matches the existing PATCH title / DELETE routes below.
+router.patch('/:guid', async (req, res) => {
+  try {
+    const { config } = req.body;
+
+    if (!config) {
+      return res.status(400).json({ error: 'config is required' });
+    }
+
+    // Same "must have meaningful customization" rule as creation.
+    const contentItems = config.content || config.images || [];
+    const hasContent    = Array.isArray(contentItems) && contentItems.length > 0;
+    const hasAudio      = !!config.audio;
+    const hasCustomDiff = config.difficulty && config.difficulty !== 'medium';
+    const hasCustomBpm  = config.bpm && config.bpm !== 91;
+    const hasCustomRounds = config.rounds && config.rounds !== 5;
+    const hasSpeedChange  = config.increaseSpeed === true;
+
+    if (!hasContent && !hasAudio && !hasCustomDiff && !hasCustomBpm && !hasCustomRounds && !hasSpeedChange) {
+      return res.status(400).json({ error: 'Customize your game before saving — change the content, audio, BPM, or difficulty first.' });
+    }
+
+    if (!hasContent) {
+      return res.status(400).json({ error: 'Add at least one image or emoji before saving — a customized BPM or audio alone isn\'t enough for a public game.' });
+    }
+
+    const share = await Share.findOneAndUpdate(
+      { guid: req.params.guid },
+      { $set: { config, preview: extractPreview(config) } },
+      { new: true }
+    );
+
+    if (!share) {
+      return res.status(404).json({ error: 'Share not found' });
+    }
+
+    res.json({ guid: share.guid });
+  } catch (err) {
+    console.error('Error updating share:', err);
+    res.status(500).json({ error: 'Failed to save changes' });
+  }
+});
+
 // POST /api/shares/:guid/like - Toggle like on a share
 // Protected by: IP rate limit, session requirement
 router.post('/:guid/like', likeLimiter, async (req, res) => {

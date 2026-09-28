@@ -343,6 +343,20 @@ export const shareApi = {
     return response.json()
   },
 
+  async update(guid: string, config: Record<string, unknown>): Promise<void> {
+    const response = await fetch(`${API_BASE}/shares/${guid}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ config })
+    })
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || 'Failed to save changes')
+    }
+  },
+
   async updateTitle(guid: string, title: string): Promise<{ guid: string; title: string }> {
     const response = await fetch(`${API_BASE}/shares/${guid}/title`, {
       method: 'PATCH',
