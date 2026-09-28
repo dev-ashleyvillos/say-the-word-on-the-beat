@@ -83,7 +83,9 @@ export const SPEED_INCREASE_MIN = 0
 export const SPEED_INCREASE_MAX = 100
 export const COUNTDOWN_MIN = 0.5
 export const COUNTDOWN_MAX = 10
-export const MAX_CONTENT_ITEMS = 8
+// Fixed Order chunks the pool into GRID_SIZE-sized rounds, so this must stay
+// a comfortable multiple of GRID_SIZE.
+export const MAX_CONTENT_ITEMS = 64
 
 // ============================================================================
 // Setting Defaults

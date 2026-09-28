@@ -10,6 +10,7 @@ import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { validateImageFile, sanitizeText } from '@/lib/security'
 import { ImageCropper } from '@/components/ImageCropper'
+import { MAX_CONTENT_ITEMS, GRID_SIZE } from '@/lib/constants'
 
 export interface ContentPoolItem {
   content: string
@@ -44,8 +45,8 @@ export function ContentPoolManager({ items, onItemsChange }: ContentPoolManagerP
   const [currentCropIndex, setCurrentCropIndex] = useState(0)
 
   const handleAddEmoji = (emoji: string) => {
-    if (items.length >= 8) {
-      toast.error('Maximum 8 items allowed')
+    if (items.length >= MAX_CONTENT_ITEMS) {
+      toast.error(`Maximum ${MAX_CONTENT_ITEMS} items allowed`)
       return
     }
     onItemsChange([...items, { content: emoji, type: 'emoji' }])
@@ -57,7 +58,7 @@ export function ContentPoolManager({ items, onItemsChange }: ContentPoolManagerP
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
-    const remainingSlots = 8 - items.length
+    const remainingSlots = MAX_CONTENT_ITEMS - items.length
     if (files.length > remainingSlots) {
       toast.error(`You can only add ${remainingSlots} more item${remainingSlots === 1 ? '' : 's'}`)
       return
@@ -182,13 +183,19 @@ export function ContentPoolManager({ items, onItemsChange }: ContentPoolManagerP
               </label>
             </div>
             <Badge variant="secondary" className="text-xs">
-              {items.length}/8
+              {items.length}/{MAX_CONTENT_ITEMS}
             </Badge>
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Add emojis or images (up to 8). Optionally add custom words that display with each item.
+            Add emojis or images (up to {MAX_CONTENT_ITEMS}). Optionally add custom words that display with each item.
           </p>
+
+          {items.length > GRID_SIZE && items.length % GRID_SIZE !== 0 && (
+            <p className="text-xs text-destructive">
+              Fixed Order needs a multiple of {GRID_SIZE} items — add {GRID_SIZE - (items.length % GRID_SIZE)} more or remove {items.length % GRID_SIZE}.
+            </p>
+          )}
 
           {items.length > 0 && (
             <div className="grid grid-cols-4 gap-2">
@@ -267,10 +274,10 @@ export function ContentPoolManager({ items, onItemsChange }: ContentPoolManagerP
               variant="outline"
               onClick={() => setIsPickerOpen(true)}
               className="flex-1 gap-2"
-              disabled={items.length >= 8}
+              disabled={items.length >= MAX_CONTENT_ITEMS}
             >
               <Plus size={16} weight="bold" />
-              {items.length === 0 ? 'Add Emoji or Image' : `Add More (${8 - items.length} slots)`}
+              {items.length === 0 ? 'Add Emoji or Image' : `Add More (${MAX_CONTENT_ITEMS - items.length} slots)`}
             </Button>
             {items.length > 0 && (
               <Button
