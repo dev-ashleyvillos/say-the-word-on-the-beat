@@ -13,6 +13,7 @@ const EXPIRATION_DAYS = 7
 export const ALL_SETTING_KEYS = [
   'content-pool-v1',
   'difficulty',
+  'sequential',
   'grid-items',
   'bpm-value',
   'base-bpm',
@@ -25,6 +26,22 @@ export const ALL_SETTING_KEYS = [
   'countdown-duration',
   'image-pool-v2' // Legacy key
 ]
+
+/**
+ * A share/config link is a self-contained snapshot: when one is present,
+ * useShareConfig.loadFromUrl is the sole source of truth for these settings,
+ * so per-key localStorage/session hydration below is skipped entirely to
+ * avoid a race where a stale value (from a previous, unrelated visit on this
+ * browser) overwrites what the link just loaded.
+ */
+function hasShareLinkParam(): boolean {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    return params.has('share') || params.has('config')
+  } catch {
+    return false
+  }
+}
 
 /**
  * Check if localStorage has expired (user hasn't visited in 7 days)
@@ -116,6 +133,9 @@ export function useLocalStorage<T>(
   // Initialize from localStorage (only for small data)
   const getStoredValue = useCallback((): T => {
     if (skipLocalStorage) return defaultValue
+    // A link is about to overwrite this via loadFromUrl - start from the
+    // default instead of flashing whatever this browser had saved before.
+    if (hasShareLinkParam()) return defaultValue
     try {
       const item = localStorage.getItem(key)
       return item ? JSON.parse(item) : defaultValue
@@ -131,6 +151,10 @@ export function useLocalStorage<T>(
   useEffect(() => {
     if (isInitialized.current) return
     isInitialized.current = true
+
+    // Let loadFromUrl own these settings when a link is present - fetching
+    // the old session here would race it and could clobber the link's values.
+    if (hasShareLinkParam()) return
 
     const loadFromApi = async () => {
       try {

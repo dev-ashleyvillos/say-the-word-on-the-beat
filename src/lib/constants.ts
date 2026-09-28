@@ -86,6 +86,17 @@ export const COUNTDOWN_MAX = 10
 export const MAX_CONTENT_ITEMS = 8
 
 // ============================================================================
+// Setting Defaults
+// ============================================================================
+// Shared between App.tsx's initial state and useShareConfig's fallback values,
+// so a link that's missing/invalid a field resolves to the same default the
+// app itself uses rather than an arbitrary hardcoded number.
+
+export const DEFAULT_DIFFICULTY = 'medium'
+export const DEFAULT_ROUNDS = 5
+export const DEFAULT_SPEED_INCREASE_PERCENT = 5
+
+// ============================================================================
 // Default Content
 // ============================================================================
 

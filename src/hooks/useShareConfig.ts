@@ -14,16 +14,21 @@ import {
   sanitizeUrlParam, 
   isValidGuid 
 } from '@/lib/security'
-import { 
-  BPM_MIN, 
-  BPM_MAX, 
-  ROUNDS_MIN, 
+import {
+  BPM_MIN,
+  BPM_MAX,
+  ROUNDS_MIN,
   ROUNDS_MAX,
   SPEED_INCREASE_MIN,
   SPEED_INCREASE_MAX,
   COUNTDOWN_MIN,
   COUNTDOWN_MAX,
-  MAX_CONTENT_ITEMS 
+  MAX_CONTENT_ITEMS,
+  DEFAULT_BPM,
+  DEFAULT_DIFFICULTY,
+  DEFAULT_ROUNDS,
+  DEFAULT_SPEED_INCREASE_PERCENT,
+  DEFAULT_CONTENT_POOL,
 } from '@/lib/constants'
 import type { Difficulty, ShareConfig, ShareOptions } from '@/lib/types'
 import type { BpmAnalysisResult } from '@/lib/bpmAnalyzer'
@@ -96,80 +101,63 @@ function normalizeContentItems(
 
 /**
  * Apply a validated config to state setters.
+ *
+ * A link is meant to be a reliable, repeatable snapshot, so every field is
+ * set explicitly here - to the config's value if valid, otherwise to the
+ * app's own default - rather than being skipped and left at whatever this
+ * browser happened to have from a previous visit.
  */
 function applyConfig(
   config: ShareConfig,
   setters: Pick<UseShareConfigOptions,
     'setBpm' | 'setBaseBpm' | 'setDifficulty' | 'setSequential' | 'setContentPool' |
-    'setCustomAudio' | 'setBpmAnalysis' | 'setRounds' |
+    'setCustomAudio' | 'setBpmAnalysis' | 'setAudioStartTime' | 'setRounds' |
     'setIncreaseSpeed' | 'setSpeedIncreasePercent'
   >
 ) {
   const {
     setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
-    setCustomAudio, setBpmAnalysis, setRounds,
+    setCustomAudio, setBpmAnalysis, setAudioStartTime, setRounds,
     setIncreaseSpeed, setSpeedIncreasePercent
   } = setters
 
-  // Validate and apply BPM
-  if (config.bpm) {
-    const validation = validateNumber(config.bpm, BPM_MIN, BPM_MAX, 'BPM')
-    if (validation.valid) setBpm(config.bpm)
-  }
-  
-  if (config.baseBpm) {
-    const validation = validateNumber(config.baseBpm, BPM_MIN, BPM_MAX, 'Base BPM')
-    if (validation.valid) setBaseBpm(config.baseBpm)
-  }
-  
-  // Validate and apply difficulty
-  if (config.difficulty && validateDifficulty(config.difficulty)) {
-    setDifficulty(config.difficulty)
-  }
+  const bpmValidation = validateNumber(config.bpm, BPM_MIN, BPM_MAX, 'BPM')
+  setBpm(bpmValidation.valid ? config.bpm : DEFAULT_BPM)
 
-  // Sequential (fixed-order) playback has no UI toggle, so it must be reset
-  // explicitly on every load rather than only when present.
+  const baseBpm = config.baseBpm ?? DEFAULT_BPM
+  const baseBpmValidation = validateNumber(baseBpm, BPM_MIN, BPM_MAX, 'Base BPM')
+  setBaseBpm(baseBpmValidation.valid ? baseBpm : DEFAULT_BPM)
+
+  setDifficulty(
+    config.difficulty && validateDifficulty(config.difficulty) ? config.difficulty : DEFAULT_DIFFICULTY
+  )
+
+  // Fixed-order playback: always set explicitly so an old value can't linger.
   setSequential(!!config.sequential)
 
-
-  // Normalize and apply content (supports legacy 'images' format)
+  // Normalize content (supports legacy 'images' format), falling back to the
+  // app's own default pool if nothing valid survives normalization.
   const contentItems = config.content || config.images
-  if (contentItems) {
-    const validItems = normalizeContentItems(contentItems)
-    if (validItems.length > 0) {
-      setContentPool(validItems)
-    }
-  }
-  
-  // Validate and apply audio
-  if (config.audio && isValidDataUrl(config.audio)) {
-    setCustomAudio(config.audio)
-  }
-  
-  if (config.bpmAnalysis) {
-    setBpmAnalysis(config.bpmAnalysis)
-  }
-  
-  // Validate and apply rounds
-  if (config.rounds) {
-    const validation = validateNumber(config.rounds, ROUNDS_MIN, ROUNDS_MAX, 'Rounds')
-    if (validation.valid) setRounds(config.rounds)
-  }
-  
-  if (config.increaseSpeed !== undefined) {
-    setIncreaseSpeed(config.increaseSpeed)
-  }
-  
-  // Validate and apply speed increase percent
-  if (config.speedIncreasePercent !== undefined) {
-    const validation = validateNumber(
-      config.speedIncreasePercent, 
-      SPEED_INCREASE_MIN, 
-      SPEED_INCREASE_MAX, 
-      'Speed increase'
-    )
-    if (validation.valid) setSpeedIncreasePercent(config.speedIncreasePercent)
-  }
+  const validItems = normalizeContentItems(contentItems)
+  setContentPool(validItems.length > 0 ? validItems : DEFAULT_CONTENT_POOL)
+
+  setCustomAudio(config.audio && isValidDataUrl(config.audio) ? config.audio : null)
+  setBpmAnalysis(config.bpmAnalysis ?? null)
+  setAudioStartTime(typeof config.audioStartTime === 'number' ? config.audioStartTime : 0)
+
+  const roundsValidation = validateNumber(config.rounds, ROUNDS_MIN, ROUNDS_MAX, 'Rounds')
+  setRounds(roundsValidation.valid ? config.rounds : DEFAULT_ROUNDS)
+
+  setIncreaseSpeed(config.increaseSpeed ?? false)
+
+  const speedIncreasePercent = config.speedIncreasePercent ?? DEFAULT_SPEED_INCREASE_PERCENT
+  const speedValidation = validateNumber(
+    speedIncreasePercent,
+    SPEED_INCREASE_MIN,
+    SPEED_INCREASE_MAX,
+    'Speed increase'
+  )
+  setSpeedIncreasePercent(speedValidation.valid ? speedIncreasePercent : DEFAULT_SPEED_INCREASE_PERCENT)
 }
 
 export function useShareConfig(options: UseShareConfigOptions) {
@@ -247,21 +235,28 @@ export function useShareConfig(options: UseShareConfigOptions) {
    */
   const loadFromUrl = useCallback(async () => {
     if (hasLoadedFromUrl.current) return
-    
+
+    const urlParams = new URLSearchParams(window.location.search)
+    const shareIdRaw = urlParams.get('share')
+    const configParamRaw = urlParams.get('config')
+
+    const shareId = sanitizeUrlParam(shareIdRaw)
+    const configParam = sanitizeUrlParam(configParamRaw)
+
+    // Claim the load before the first await so a duplicate effect run (e.g.
+    // React StrictMode's double-invoke) can't fire a second, concurrent
+    // fetch that races this one and applies its config out of order.
+    if (shareId || configParam) {
+      hasLoadedFromUrl.current = true
+    }
+
     try {
-      const urlParams = new URLSearchParams(window.location.search)
-      const shareIdRaw = urlParams.get('share')
-      const configParamRaw = urlParams.get('config')
-      
-      const shareId = sanitizeUrlParam(shareIdRaw)
-      const configParam = sanitizeUrlParam(configParamRaw)
-      
       const setters = {
         setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
-        setCustomAudio, setBpmAnalysis, setRounds,
+        setCustomAudio, setBpmAnalysis, setAudioStartTime, setRounds,
         setIncreaseSpeed, setSpeedIncreasePercent
       }
-      
+
       if (shareId) {
         // Load from share API
         if (!isValidGuid(shareId)) {
@@ -270,11 +265,10 @@ export function useShareConfig(options: UseShareConfigOptions) {
         }
 
         const config = await shareApi.get(shareId) as ShareConfig | null
-        
+
         if (config) {
           applyConfig(config, setters)
           toast.success('Loaded shared game configuration!')
-          hasLoadedFromUrl.current = true
         } else {
           toast.error('Share link not found')
         }
@@ -284,7 +278,6 @@ export function useShareConfig(options: UseShareConfigOptions) {
           const decoded = JSON.parse(atob(configParam)) as ShareConfig
           applyConfig(decoded, setters)
           toast.success('Loaded game configuration!')
-          hasLoadedFromUrl.current = true
         } catch (error) {
           console.error('Failed to parse config:', error)
           if (error instanceof SyntaxError) {
@@ -327,7 +320,7 @@ export function useShareConfig(options: UseShareConfigOptions) {
     }
   }, [
     setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
-    setCustomAudio, setBpmAnalysis, setRounds,
+    setCustomAudio, setBpmAnalysis, setAudioStartTime, setRounds,
     setIncreaseSpeed, setSpeedIncreasePercent, setCountdownDuration
   ])
 
@@ -337,34 +330,29 @@ export function useShareConfig(options: UseShareConfigOptions) {
   const loadPublicGame = useCallback(async (guid: string) => {
     try {
       const config = await shareApi.get(guid) as ShareConfig | null
-      
+
       if (!config) {
         throw new Error('Game not found')
       }
-      
+
       const setters = {
         setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
-        setCustomAudio, setBpmAnalysis, setRounds,
+        setCustomAudio, setBpmAnalysis, setAudioStartTime, setRounds,
         setIncreaseSpeed, setSpeedIncreasePercent
       }
-      
+
       applyConfig(config, setters)
-      
-      // Handle audio specially - need to clear if not present
-      if (!config.audio || !isValidDataUrl(config.audio)) {
-        setCustomAudio(null)
-      }
-      
+
       // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' })
-      
+
     } catch (error) {
       console.error('Failed to load public game:', error)
       throw error
     }
   }, [
     setBpm, setBaseBpm, setDifficulty, setSequential, setContentPool,
-    setCustomAudio, setBpmAnalysis, setRounds,
+    setCustomAudio, setBpmAnalysis, setAudioStartTime, setRounds,
     setIncreaseSpeed, setSpeedIncreasePercent
   ])
 
