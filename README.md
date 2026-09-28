@@ -1,8 +1,8 @@
 # Say the Word on Beat 🎵
 
-<a href="https://buymeacoffee.com/teriansilva" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" ></a>
-
 A playful, interactive web platform that recreates the viral "Say the Word on Beat" social media challenge. Create custom picture grids, sync them to a beat, and share your creations!
+
+> Forked from [teriansilva/say-the-word-on-the-beat](https://github.com/teriansilva/say-the-word-on-the-beat).
 
 ## ✨ Features
 
@@ -40,7 +40,7 @@ See the platform live here: **[saywordsonbeat.com](https://saywordsonbeat.com/)*
 
 ```bash
 # Clone the repository
-git clone https://github.com/teriansilva/say-the-word-on-beat.git
+git clone https://github.com/dev-ashleyvillos/say-the-word-on-the-beat.git
 
 # Navigate to the project directory
 cd say-the-word-on-beat

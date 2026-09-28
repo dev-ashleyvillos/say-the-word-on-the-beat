@@ -69,7 +69,7 @@ export interface ShareConfig {
   rounds: number
   increaseSpeed?: boolean
   speedIncreasePercent?: number
-  /** Play the content pool in its stored order instead of randomizing (no UI toggle; set only via loaded share configs) */
+  /** Play the content pool in its stored order instead of randomizing ("Fixed Order" setting) */
   sequential?: boolean
 }
 

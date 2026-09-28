@@ -116,7 +116,6 @@ app.get('/share/:guid', async (req, res) => {
   <meta name="twitter:title"       content="${esc(ogTitle)}" />
   <meta name="twitter:description" content="${esc(ogDescription)}" />
   <meta name="twitter:image"       content="${esc(ogImage)}" />
-  <meta name="twitter:creator"     content="@teriansilva" />
 
   <!-- Redirect browsers to the SPA -->
   <meta http-equiv="refresh" content="0; url=${esc(appUrl)}" />

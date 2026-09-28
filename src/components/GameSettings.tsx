@@ -60,6 +60,7 @@ function RoundsSetting({ value, onChange, disabled }: RoundsSettingProps) {
 interface DifficultySettingProps {
   value: Difficulty
   onChange: (value: Difficulty) => void
+  disabled?: boolean
 }
 
 const DIFFICULTY_DESCRIPTIONS: Record<Difficulty, { short: string; long: string }> = {
@@ -77,11 +78,11 @@ const DIFFICULTY_DESCRIPTIONS: Record<Difficulty, { short: string; long: string 
   },
 }
 
-function DifficultySetting({ value, onChange }: DifficultySettingProps) {
+function DifficultySetting({ value, onChange, disabled }: DifficultySettingProps) {
   const description = DIFFICULTY_DESCRIPTIONS[value]
-  
+
   return (
-    <Card className="p-4 border-2">
+    <Card className={`p-4 border-2 ${disabled ? 'opacity-50' : ''}`}>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-sm font-semibold text-foreground">
@@ -91,13 +92,14 @@ function DifficultySetting({ value, onChange }: DifficultySettingProps) {
             {description.short}
           </Badge>
         </div>
-        
+
         <ToggleGroup
           type="single"
           value={value}
           onValueChange={(v) => {
             if (v) onChange(v as Difficulty)
           }}
+          disabled={disabled}
           className="w-full"
         >
           <ToggleGroupItem value="easy" className="text-sm flex-1">
@@ -110,10 +112,40 @@ function DifficultySetting({ value, onChange }: DifficultySettingProps) {
             Hard
           </ToggleGroupItem>
         </ToggleGroup>
-        
+
         <p className="text-xs text-muted-foreground">
-          {description.long}
+          {disabled ? 'Overridden by Fixed Order below' : description.long}
         </p>
+      </div>
+    </Card>
+  )
+}
+
+interface FixedOrderSettingProps {
+  enabled: boolean
+  onEnabledChange: (enabled: boolean) => void
+}
+
+function FixedOrderSetting({ enabled, onEnabledChange }: FixedOrderSettingProps) {
+  return (
+    <Card className="p-4 border-2">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <Label
+            htmlFor="fixed-order"
+            className="text-sm font-semibold text-foreground cursor-pointer"
+          >
+            Fixed order
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Play tiles in the exact order you added them, no shuffling
+          </p>
+        </div>
+        <Switch
+          id="fixed-order"
+          checked={enabled}
+          onCheckedChange={onEnabledChange}
+        />
       </div>
     </Card>
   )
@@ -202,7 +234,11 @@ interface GameSettingsProps {
   // Difficulty
   difficulty: Difficulty
   onDifficultyChange: (value: Difficulty) => void
-  
+
+  // Fixed order (overrides difficulty when enabled)
+  sequential: boolean
+  onSequentialChange: (enabled: boolean) => void
+
   // Speed increase
   increaseSpeed: boolean
   onIncreaseSpeedChange: (enabled: boolean) => void
@@ -233,6 +269,8 @@ export function GameSettings({
   onRoundsChange,
   difficulty,
   onDifficultyChange,
+  sequential,
+  onSequentialChange,
   increaseSpeed,
   onIncreaseSpeedChange,
   speedIncreasePercent,
@@ -271,8 +309,14 @@ export function GameSettings({
       <DifficultySetting
         value={difficulty}
         onChange={onDifficultyChange}
+        disabled={sequential}
       />
-      
+
+      <FixedOrderSetting
+        enabled={sequential}
+        onEnabledChange={onSequentialChange}
+      />
+
       <SpeedIncreaseSetting
         enabled={increaseSpeed}
         onEnabledChange={onIncreaseSpeedChange}

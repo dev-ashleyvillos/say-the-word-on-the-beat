@@ -69,6 +69,7 @@ function App() {
     DEFAULT_CONTENT_POOL
   )
   const [difficulty, setDifficulty] = useLocalStorage<Difficulty>('difficulty', 'medium')
+  const [sequential, setSequential] = useLocalStorage<boolean>('sequential', false)
   const [gridItems, setGridItems] = useLocalStorage<GridItem[]>('grid-items', [])
   const [bpm, setBpm] = useLocalStorage<number>('bpm-value', DEFAULT_BPM)
   const [baseBpm, setBaseBpm] = useLocalStorage<number>('base-bpm', DEFAULT_BPM)
@@ -85,8 +86,6 @@ function App() {
   // ==========================================================================
   
   const [isPlaying, setIsPlaying] = useState(false)
-  // Fixed-order playback (no UI toggle; only ever set by loading a share config)
-  const [sequential, setSequential] = useState(false)
   const [communityRefreshKey, setCommunityRefreshKey] = useState(0)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [revealedIndices, setRevealedIndices] = useState<Set<number>>(new Set())
@@ -113,6 +112,7 @@ function App() {
   const currentBpm = bpm ?? DEFAULT_BPM
   const currentBaseBpm = baseBpm ?? DEFAULT_BPM
   const currentDifficulty = difficulty ?? 'medium'
+  const currentSequential = sequential ?? false
   const currentContentPool = contentPool ?? []
   const currentRounds = rounds ?? 5
   const currentIncreaseSpeed = increaseSpeed ?? false
@@ -138,8 +138,8 @@ function App() {
   
   // Fallback grid when no items are persisted
   const fallbackGridItems = useMemo(() => {
-    return generateGridFromPool(currentContentPool, currentDifficulty, sequential)
-  }, [currentContentPool, currentDifficulty, sequential])
+    return generateGridFromPool(currentContentPool, currentDifficulty, currentSequential)
+  }, [currentContentPool, currentDifficulty, currentSequential])
   
   const displayedGridItems = (gridItems && gridItems.length > 0) ? gridItems : fallbackGridItems
 
@@ -160,9 +160,10 @@ function App() {
     const bpmChanged = currentBpm !== DEFAULT_BPM
     const roundsChanged = currentRounds !== 5
     const speedSettingsChanged = currentIncreaseSpeed !== false
+    const sequentialChanged = currentSequential !== false
 
-    return contentPoolChanged || hasCustomAudio || difficultyChanged || bpmChanged || roundsChanged || speedSettingsChanged
-  }, [currentContentPool, customAudio, currentDifficulty, currentBpm, currentRounds, currentIncreaseSpeed])
+    return contentPoolChanged || hasCustomAudio || difficultyChanged || bpmChanged || roundsChanged || speedSettingsChanged || sequentialChanged
+  }, [currentContentPool, customAudio, currentDifficulty, currentBpm, currentRounds, currentIncreaseSpeed, currentSequential])
 
   // ==========================================================================
   // Game Playback Hook
@@ -173,7 +174,7 @@ function App() {
     currentBaseBpm,
     currentRounds,
     currentDifficulty,
-    currentSequential: sequential,
+    currentSequential,
     currentContentPool,
     currentIncreaseSpeed,
     currentSpeedIncreasePercent,
@@ -205,7 +206,7 @@ function App() {
     currentBpm,
     currentBaseBpm,
     currentDifficulty,
-    currentSequential: sequential,
+    currentSequential,
     currentContentPool,
     customAudio: customAudio ?? null,
     currentBpmAnalysis,
@@ -295,9 +296,9 @@ function App() {
 
   // Regenerate grid when difficulty, content, or sequential mode changes
   useEffect(() => {
-    const newGrid = generateGridFromPool(currentContentPool, currentDifficulty, sequential)
+    const newGrid = generateGridFromPool(currentContentPool, currentDifficulty, currentSequential)
     setGridItems(newGrid)
-  }, [currentDifficulty, currentContentPool, sequential, setGridItems])
+  }, [currentDifficulty, currentContentPool, currentSequential, setGridItems])
 
   // gameplayce.io#1348: Gameplayce promo. Shows on load, whenever nothing
   // else is on screen (rules: lib/promo.ts).
@@ -381,6 +382,8 @@ function App() {
             onRoundsChange={setLocalRounds}
             difficulty={currentDifficulty}
             onDifficultyChange={setDifficulty}
+            sequential={currentSequential}
+            onSequentialChange={setSequential}
             increaseSpeed={currentIncreaseSpeed}
             onIncreaseSpeedChange={setIncreaseSpeed}
             speedIncreasePercent={localSpeedPercent}
@@ -403,19 +406,11 @@ function App() {
         {/* Footer */}
         <footer className="text-center text-sm text-muted-foreground space-y-2">
           <p>
-            Made with ❤️ by{' '}
-            <a 
-              href="https://superstatus.io" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              TerianSilva
-            </a>
+            Made with ❤️ by ashleyvillos
             {' '}|{' '}
-            <a 
-              href="https://github.com/teriansilva/say-the-word-on-the-beat" 
-              target="_blank" 
+            <a
+              href="https://github.com/dev-ashleyvillos/say-the-word-on-the-beat"
+              target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
             >
