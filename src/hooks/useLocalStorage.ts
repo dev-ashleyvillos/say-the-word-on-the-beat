@@ -249,11 +249,15 @@ export async function resetAllSettings(): Promise<void> {
 // Types for public shares
 export interface PublicSharePreview {
   contentItems: Array<{ content: string; type: 'emoji' | 'image' }>
+  totalItems: number
   rounds: number
   bpm: number
   hasCustomAudio: boolean
   difficulty: string
+  sequential: boolean
 }
+
+export type DifficultyFilter = 'easy' | 'medium' | 'hard' | 'fixedOrder'
 
 export interface PublicShare {
   guid: string
@@ -321,18 +325,37 @@ export const shareApi = {
     }
   },
 
-  async getPublic(page: number = 1, limit: number = 20, sort: 'popular' | 'newest' = 'popular'): Promise<PublicSharesResponse> {
+  async getPublic(page: number = 1, limit: number = 20, sort: 'popular' | 'newest' = 'newest', difficulty?: DifficultyFilter): Promise<PublicSharesResponse> {
     await ensureSession()
 
+    const params = new URLSearchParams({ page: String(page), limit: String(limit), sort })
+    if (difficulty) params.set('difficulty', difficulty)
+
     const response = await fetch(
-      `${API_BASE}/shares/public?page=${page}&limit=${limit}&sort=${sort}`,
+      `${API_BASE}/shares/public?${params.toString()}`,
       { credentials: 'include' }
     )
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch public shares')
     }
-    
+
+    return response.json()
+  },
+
+  async updateTitle(guid: string, title: string): Promise<{ guid: string; title: string }> {
+    const response = await fetch(`${API_BASE}/shares/${guid}/title`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ title })
+    })
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || 'Failed to rename share')
+    }
+
     return response.json()
   },
 

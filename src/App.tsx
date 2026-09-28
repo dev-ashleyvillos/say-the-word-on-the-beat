@@ -21,7 +21,7 @@ import { toast } from 'sonner'
 import { GameSettings } from '@/components/GameSettings'
 import { FullscreenPlayback } from '@/components/FullscreenPlayback'
 import { FloatingMenu } from '@/components/FloatingMenu'
-import { PublicGamesPanel } from '@/components/PublicGamesPanel'
+import { RoundsDashboard } from '@/components/RoundsDashboard'
 import { ShareModal } from '@/components/ShareModal'
 import { AdminDashboard } from '@/components/AdminDashboard'
 import { ConsentBanner } from '@/components/ConsentBanner'
@@ -86,7 +86,12 @@ function App() {
   // ==========================================================================
   
   const [isPlaying, setIsPlaying] = useState(false)
-  const [communityRefreshKey, setCommunityRefreshKey] = useState(0)
+  // Dashboard is the default landing view; a share/config URL param means a
+  // specific game was loaded, so show the editor with it instead.
+  const [showDashboard, setShowDashboard] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return !(params.get('share') || params.get('config'))
+  })
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [revealedIndices, setRevealedIndices] = useState<Set<number>>(new Set())
   const [currentRound, setCurrentRound] = useState(0)
@@ -272,6 +277,21 @@ function App() {
     setTimeout(() => window.location.reload(), 500)
   }
 
+  // Loading a game from the dashboard should behave like following a real
+  // share link: the URL reflects it (so refreshing or copying the address
+  // reproduces the same view) and it's a real history entry, so the
+  // browser's Back button returns to the dashboard instead of leaving the app.
+  const handleLoadGameFromDashboard = async (guid: string) => {
+    await loadPublicGame(guid)
+    window.history.pushState(null, '', `${window.location.pathname}?share=${guid}`)
+    setShowDashboard(false)
+  }
+
+  const handleBrowseRoundsClick = () => {
+    window.history.pushState(null, '', window.location.pathname)
+    setShowDashboard(true)
+  }
+
   // ==========================================================================
   // Effects
   // ==========================================================================
@@ -280,6 +300,28 @@ function App() {
   useEffect(() => {
     loadFromUrl()
   }, [loadFromUrl])
+
+  // Browser Back/Forward moves between history entries pushed by
+  // handleLoadGameFromDashboard / handleBrowseRoundsClick above — reconcile
+  // the view (and reload the game, if any) to match wherever it lands.
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search)
+      const shareId = params.get('share')
+
+      if (shareId) {
+        setShowDashboard(false)
+        loadPublicGame(shareId).catch(() => {
+          toast.error('Failed to load game')
+        })
+      } else {
+        setShowDashboard(true)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [loadPublicGame])
 
   // Cleanup intervals on unmount
   useEffect(() => {
@@ -363,45 +405,52 @@ function App() {
           <p className="text-sm text-muted-foreground">
             Build your own beat-synced word party game and share it with friends!
           </p>
+          {!showDashboard && (
+            <button
+              type="button"
+              onClick={handleBrowseRoundsClick}
+              className="text-sm underline underline-offset-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Browse All Rounds
+            </button>
+          )}
         </header>
 
         {promo.visible && <PromoStrip onDismiss={promo.dismiss} onClick={promo.click} />}
 
-        {/* Two-column Layout: Community Games + Game Editor */}
-        <div className="flex flex-col xl:flex-row gap-6">
-          {/* Community Games Sidebar (left on desktop, top on mobile) */}
-          <div className="xl:w-[360px] shrink-0 xl:h-[calc(100vh-280px)] xl:sticky xl:top-8">
-            <PublicGamesPanel onLoadGame={loadPublicGame} refreshKey={communityRefreshKey} />
+        {showDashboard ? (
+          <RoundsDashboard onLoadGame={handleLoadGameFromDashboard} onClose={() => setShowDashboard(false)} />
+        ) : (
+          <div className="max-w-3xl mx-auto w-full">
+            {/* Game Editor */}
+            <GameSettings
+              contentPool={currentContentPool}
+              onContentPoolChange={setContentPool}
+              rounds={localRounds}
+              onRoundsChange={setLocalRounds}
+              difficulty={currentDifficulty}
+              onDifficultyChange={setDifficulty}
+              sequential={currentSequential}
+              onSequentialChange={setSequential}
+              increaseSpeed={currentIncreaseSpeed}
+              onIncreaseSpeedChange={setIncreaseSpeed}
+              speedIncreasePercent={localSpeedPercent}
+              onSpeedIncreasePercentChange={setLocalSpeedPercent}
+              audioUrl={customAudio ?? null}
+              onAudioUpload={handleAudioUpload}
+              onAudioRemove={handleAudioRemove}
+              bpm={localBpm}
+              onBpmChange={setLocalBpm}
+              baseBpm={localBaseBpm}
+              onBaseBpmChange={setLocalBaseBpm}
+              startTime={localStartTime}
+              onStartTimeChange={setLocalStartTime}
+              countdownDuration={localCountdown}
+              onCountdownDurationChange={setLocalCountdown}
+              isPlaying={isPlaying}
+            />
           </div>
-
-          {/* Game Editor */}
-          <GameSettings
-            contentPool={currentContentPool}
-            onContentPoolChange={setContentPool}
-            rounds={localRounds}
-            onRoundsChange={setLocalRounds}
-            difficulty={currentDifficulty}
-            onDifficultyChange={setDifficulty}
-            sequential={currentSequential}
-            onSequentialChange={setSequential}
-            increaseSpeed={currentIncreaseSpeed}
-            onIncreaseSpeedChange={setIncreaseSpeed}
-            speedIncreasePercent={localSpeedPercent}
-            onSpeedIncreasePercentChange={setLocalSpeedPercent}
-            audioUrl={customAudio ?? null}
-            onAudioUpload={handleAudioUpload}
-            onAudioRemove={handleAudioRemove}
-            bpm={localBpm}
-            onBpmChange={setLocalBpm}
-            baseBpm={localBaseBpm}
-            onBaseBpmChange={setLocalBaseBpm}
-            startTime={localStartTime}
-            onStartTimeChange={setLocalStartTime}
-            countdownDuration={localCountdown}
-            onCountdownDurationChange={setLocalCountdown}
-            isPlaying={isPlaying}
-          />
-        </div>
+        )}
 
         {/* Footer */}
         <footer className="text-center text-sm text-muted-foreground space-y-2">
@@ -446,7 +495,6 @@ function App() {
         onOpenChange={setShareModalOpen}
         onGenerateShare={generateShareLink}
         hasContent={currentContentPool.length > 0}
-        onPublicShare={() => setCommunityRefreshKey(k => k + 1)}
       />
 
       {/* Privacy settings: the analytics On/Off panel, opened from the footer */}

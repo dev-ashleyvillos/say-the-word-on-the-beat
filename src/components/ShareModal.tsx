@@ -2,9 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { ShareNetwork, Copy, Check, Globe, Link } from '@phosphor-icons/react'
+import { ShareNetwork, Copy, Check, Globe } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 interface ShareModalProps {
@@ -12,14 +11,14 @@ interface ShareModalProps {
   onOpenChange: (open: boolean) => void
   onGenerateShare: (options: { isPublic: boolean; title: string; _hp_field?: string; _submit_time?: number }) => Promise<string>
   hasContent: boolean
-  onPublicShare?: () => void
 }
 
-export function ShareModal({ open, onOpenChange, onGenerateShare, hasContent, onPublicShare }: ShareModalProps) {
+// No accounts yet, so there's no private/personal library to keep a share out of —
+// every share is public until Firebase/Auth0 login lands. See temp_docs/docs/02-features-to-implement.md.
+export function ShareModal({ open, onOpenChange, onGenerateShare, hasContent }: ShareModalProps) {
   const [copied, setCopied] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isPublic, setIsPublic] = useState(false)
   const [title, setTitle] = useState('')
   // Honeypot field - should remain empty, bots will fill it
   const [honeypot, setHoneypot] = useState('')
@@ -44,19 +43,14 @@ export function ShareModal({ open, onOpenChange, onGenerateShare, hasContent, on
 
     setIsGenerating(true)
     try {
-      const url = await onGenerateShare({ 
-        isPublic, 
+      const url = await onGenerateShare({
+        isPublic: true,
         title: title.trim(),
         // Pass timing info to server for validation
         _submit_time: openedAtRef.current
       })
       setShareUrl(url)
-      if (isPublic) {
-        toast.success('Game shared publicly!')
-        onPublicShare?.()
-      } else {
-        toast.success('Share link generated!')
-      }
+      toast.success('Game shared publicly!')
     } catch (error) {
       if (error instanceof Error && error.message.includes('wait')) {
         toast.error(error.message)
@@ -83,7 +77,6 @@ export function ShareModal({ open, onOpenChange, onGenerateShare, hasContent, on
     if (!open) {
       // Reset state when closing
       setShareUrl('')
-      setIsPublic(false)
       setTitle('')
       setHoneypot('')
     }
@@ -99,7 +92,7 @@ export function ShareModal({ open, onOpenChange, onGenerateShare, hasContent, on
             Share Your Game
           </DialogTitle>
           <DialogDescription>
-            Generate a shareable link or share publicly with the community
+            Generate a shareable link — everyone can discover it in Community Games
           </DialogDescription>
         </DialogHeader>
         
@@ -132,61 +125,32 @@ export function ShareModal({ open, onOpenChange, onGenerateShare, hasContent, on
                 />
               </div>
               
-              {/* Public toggle */}
-              <div className={`flex items-center justify-between p-3 rounded-lg border-2 bg-muted/30 ${!hasContent ? 'opacity-60' : ''}`}>
-                <div className="space-y-0.5">
-                  <Label htmlFor="share-public" className="text-sm font-semibold cursor-pointer flex items-center gap-2">
-                    <Globe size={18} weight="bold" className="text-primary" />
-                    Share Publicly
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {hasContent
-                      ? 'Let others discover and play your game'
-                      : 'Add at least one image or emoji to share publicly'}
-                  </p>
-                </div>
-                <Switch
-                  id="share-public"
-                  checked={isPublic}
-                  onCheckedChange={setIsPublic}
-                  disabled={!hasContent}
-                />
+              {/* No accounts yet, so every share is public for now */}
+              <div className={`flex items-center gap-3 p-3 rounded-lg border-2 bg-muted/30 ${!hasContent ? 'opacity-60' : ''}`}>
+                <Globe size={18} weight="bold" className="text-primary shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  {hasContent
+                    ? "Anyone will be able to discover and play this game in Community Games."
+                    : 'Add at least one image or emoji to share this game.'}
+                </p>
               </div>
-              
+
               <Button
                 size="lg"
                 onClick={handleGenerate}
-                disabled={isGenerating}
+                disabled={isGenerating || !hasContent}
                 className="w-full"
               >
-                {isPublic ? (
-                  <Globe size={20} weight="bold" />
-                ) : (
-                  <Link size={20} weight="bold" />
-                )}
-                {isGenerating 
-                  ? 'Generating...' 
-                  : isPublic 
-                    ? 'Share with Community' 
-                    : 'Generate Private Link'
-                }
+                <Globe size={20} weight="bold" />
+                {isGenerating ? 'Generating...' : 'Share with Community'}
               </Button>
             </>
           ) : (
             <>
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
-                  {isPublic ? (
-                    <>
-                      <Globe size={16} weight="bold" className="text-green-500" />
-                      Shared Publicly
-                    </>
-                  ) : (
-                    <>
-                      <Link size={16} weight="bold" />
-                      Your Share Link
-                    </>
-                  )}
+                  <Globe size={16} weight="bold" className="text-green-500" />
+                  Shared Publicly
                 </label>
                 <div className="flex gap-2">
                   <Input
@@ -207,11 +171,9 @@ export function ShareModal({ open, onOpenChange, onGenerateShare, hasContent, on
                     )}
                   </Button>
                 </div>
-                {isPublic && (
-                  <p className="text-xs text-muted-foreground">
-                    ✨ Your game is now visible in the Community Games section
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  ✨ Your game is now visible in the Community Games section
+                </p>
               </div>
               
               <Button
