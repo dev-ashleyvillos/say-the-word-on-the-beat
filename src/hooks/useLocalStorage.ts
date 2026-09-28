@@ -359,6 +359,18 @@ export const shareApi = {
     return response.json()
   },
 
+  async deleteShare(guid: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/shares/${guid}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || 'Failed to delete share')
+    }
+  },
+
   async toggleLike(guid: string): Promise<{ likes: number; hasLiked: boolean }> {
     await ensureSession()
     

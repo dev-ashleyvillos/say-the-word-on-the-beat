@@ -14,6 +14,7 @@ export function usePublicGames({ pageSize = 12 }: UsePublicGamesOptions = {}) {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [likingGuids, setLikingGuids] = useState<Set<string>>(new Set())
   const [renamingGuids, setRenamingGuids] = useState<Set<string>>(new Set())
+  const [deletingGuids, setDeletingGuids] = useState<Set<string>>(new Set())
   const [sortMode, setSortMode] = useState<SortMode>('newest')
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter | undefined>(undefined)
   const [pagination, setPagination] = useState({
@@ -126,6 +127,25 @@ export function usePublicGames({ pageSize = 12 }: UsePublicGamesOptions = {}) {
     }
   }, [])
 
+  const handleDelete = useCallback(async (guid: string) => {
+    setDeletingGuids(prev => new Set([...prev, guid]))
+
+    try {
+      await shareApi.deleteShare(guid)
+      setShares(prev => prev.filter(share => share.guid !== guid))
+      setPagination(prev => ({ ...prev, total: Math.max(0, prev.total - 1) }))
+    } catch (error) {
+      toast.error('Failed to delete game')
+      throw error
+    } finally {
+      setDeletingGuids(prev => {
+        const next = new Set(prev)
+        next.delete(guid)
+        return next
+      })
+    }
+  }, [])
+
   const handleRefresh = useCallback(() => {
     setIsLoading(true)
     setShares([])
@@ -138,6 +158,7 @@ export function usePublicGames({ pageSize = 12 }: UsePublicGamesOptions = {}) {
     isLoadingMore,
     likingGuids,
     renamingGuids,
+    deletingGuids,
     sortMode,
     difficultyFilter,
     pagination,
@@ -147,6 +168,7 @@ export function usePublicGames({ pageSize = 12 }: UsePublicGamesOptions = {}) {
     handleLoadMore,
     handleLike,
     handleRename,
+    handleDelete,
     handleRefresh,
   }
 }

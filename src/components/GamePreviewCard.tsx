@@ -3,7 +3,23 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Heart, MusicNote, Play, Timer, PencilSimple, Check, X, SquaresFour } from '@phosphor-icons/react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Heart, MusicNote, Play, Timer, PencilSimple, Check, X, SquaresFour, Trash, DotsThreeVertical } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { PublicShare } from '@/hooks/useLocalStorage'
@@ -13,8 +29,10 @@ interface GamePreviewCardProps {
   onLike: (guid: string) => void
   onLoad: (guid: string) => void
   onRename?: (guid: string, title: string) => Promise<void>
+  onDelete?: (guid: string) => Promise<void>
   isLiking?: boolean
   isRenaming?: boolean
+  isDeleting?: boolean
 }
 
 /** Renders an image tile only after the card becomes visible in the scroll area. */
@@ -78,11 +96,12 @@ async function copyToClipboard(url: string) {
   }
 }
 
-export function GamePreviewCard({ share, onLike, onLoad, onRename, isLiking, isRenaming }: GamePreviewCardProps) {
+export function GamePreviewCard({ share, onLike, onLoad, onRename, onDelete, isLiking, isRenaming, isDeleting }: GamePreviewCardProps) {
   const { preview, title, likes, hasLiked, guid } = share
 
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [draftTitle, setDraftTitle] = useState(title)
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -95,6 +114,14 @@ export function GamePreviewCard({ share, onLike, onLoad, onRename, isLiking, isR
   }
 
   const cancelEditingTitle = () => setIsEditingTitle(false)
+
+  const confirmDelete = async () => {
+    try {
+      await onDelete?.(guid)
+    } catch {
+      // onDelete already surfaces a toast
+    }
+  }
 
   const saveTitle = async () => {
     const trimmed = draftTitle.trim()
@@ -180,24 +207,47 @@ export function GamePreviewCard({ share, onLike, onLoad, onRename, isLiking, isR
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 group/title">
-              <h3 className="font-semibold text-sm text-foreground line-clamp-1">
-                {title || 'Untitled Game'}
-              </h3>
-              {onRename && (
-                <button
-                  type="button"
-                  onClick={startEditingTitle}
-                  className="opacity-0 group-hover/title:opacity-100 transition-opacity text-muted-foreground hover:text-foreground shrink-0"
-                  title="Rename"
-                >
-                  <PencilSimple size={12} weight="bold" />
-                </button>
-              )}
-            </div>
+            <h3 className="font-semibold text-sm text-foreground line-clamp-1">
+              {title || 'Untitled Game'}
+            </h3>
           )}
           <span className="text-xs text-muted-foreground">{formattedDate}</span>
         </div>
+
+        {!isEditingTitle && (onRename || onDelete) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                title="More options"
+              >
+                <DotsThreeVertical size={18} weight="bold" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onRename && (
+                <DropdownMenuItem onSelect={startEditingTitle}>
+                  <PencilSimple size={14} weight="bold" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    setIsConfirmingDelete(true)
+                  }}
+                >
+                  <Trash size={14} weight="bold" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Stats Row */}
@@ -263,6 +313,29 @@ export function GamePreviewCard({ share, onLike, onLoad, onRename, isLiking, isR
           Load
         </Button>
       </div>
+
+      {onDelete && (
+        <AlertDialog open={isConfirmingDelete} onOpenChange={setIsConfirmingDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this round?</AlertDialogTitle>
+              <AlertDialogDescription>
+                "{title || 'Untitled Game'}" will be permanently deleted. This can't be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </Card>
   )
 }

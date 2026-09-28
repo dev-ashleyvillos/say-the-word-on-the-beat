@@ -29,6 +29,7 @@ export function RoundsDashboard({ onLoadGame, onClose }: RoundsDashboardProps) {
     isLoadingMore,
     likingGuids,
     renamingGuids,
+    deletingGuids,
     sortMode,
     difficultyFilter,
     pagination,
@@ -37,6 +38,7 @@ export function RoundsDashboard({ onLoadGame, onClose }: RoundsDashboardProps) {
     handleLoadMore,
     handleLike,
     handleRename,
+    handleDelete,
     handleRefresh,
   } = usePublicGames({ pageSize: 24 })
 
@@ -180,8 +182,10 @@ export function RoundsDashboard({ onLoadGame, onClose }: RoundsDashboardProps) {
                 onLike={handleLike}
                 onLoad={handleLoad}
                 onRename={handleRename}
+                onDelete={handleDelete}
                 isLiking={likingGuids.has(share.guid)}
                 isRenaming={renamingGuids.has(share.guid)}
+                isDeleting={deletingGuids.has(share.guid)}
               />
             ))}
           </div>
