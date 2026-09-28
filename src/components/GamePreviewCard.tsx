@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Heart, MusicNote, Play, Timer } from '@phosphor-icons/react'
+import { Heart, MusicNote, Play, Timer, PencilSimple, Check, X, SquaresFour } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { PublicShare } from '@/hooks/useLocalStorage'
@@ -11,7 +12,9 @@ interface GamePreviewCardProps {
   share: PublicShare
   onLike: (guid: string) => void
   onLoad: (guid: string) => void
+  onRename?: (guid: string, title: string) => Promise<void>
   isLiking?: boolean
+  isRenaming?: boolean
 }
 
 /** Renders an image tile only after the card becomes visible in the scroll area. */
@@ -75,8 +78,37 @@ async function copyToClipboard(url: string) {
   }
 }
 
-export function GamePreviewCard({ share, onLike, onLoad, isLiking }: GamePreviewCardProps) {
+export function GamePreviewCard({ share, onLike, onLoad, onRename, isLiking, isRenaming }: GamePreviewCardProps) {
   const { preview, title, likes, hasLiked, guid } = share
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [draftTitle, setDraftTitle] = useState(title)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isEditingTitle) titleInputRef.current?.focus()
+  }, [isEditingTitle])
+
+  const startEditingTitle = () => {
+    setDraftTitle(title)
+    setIsEditingTitle(true)
+  }
+
+  const cancelEditingTitle = () => setIsEditingTitle(false)
+
+  const saveTitle = async () => {
+    const trimmed = draftTitle.trim()
+    if (trimmed === (title || '')) {
+      setIsEditingTitle(false)
+      return
+    }
+    try {
+      await onRename?.(guid, trimmed)
+      setIsEditingTitle(false)
+    } catch {
+      // onRename already surfaces a toast; keep editing open so the user can retry
+    }
+  }
 
   // Get up to 4 content items for the preview grid
   const previewItems = preview?.contentItems?.slice(0, 4) || []
@@ -126,15 +158,54 @@ export function GamePreviewCard({ share, onLike, onLoad, isLiking }: GamePreview
 
         {/* Title */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm text-foreground line-clamp-1">
-            {title || 'Untitled Game'}
-          </h3>
+          {isEditingTitle ? (
+            <div className="flex items-center gap-1">
+              <Input
+                ref={titleInputRef}
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveTitle()
+                  if (e.key === 'Escape') cancelEditingTitle()
+                }}
+                maxLength={100}
+                disabled={isRenaming}
+                className="h-7 text-sm px-2"
+              />
+              <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" disabled={isRenaming} onClick={saveTitle}>
+                <Check size={14} weight="bold" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" disabled={isRenaming} onClick={cancelEditingTitle}>
+                <X size={14} weight="bold" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 group/title">
+              <h3 className="font-semibold text-sm text-foreground line-clamp-1">
+                {title || 'Untitled Game'}
+              </h3>
+              {onRename && (
+                <button
+                  type="button"
+                  onClick={startEditingTitle}
+                  className="opacity-0 group-hover/title:opacity-100 transition-opacity text-muted-foreground hover:text-foreground shrink-0"
+                  title="Rename"
+                >
+                  <PencilSimple size={12} weight="bold" />
+                </button>
+              )}
+            </div>
+          )}
           <span className="text-xs text-muted-foreground">{formattedDate}</span>
         </div>
       </div>
 
       {/* Stats Row */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <Badge variant="secondary" className="text-xs gap-1">
+          <SquaresFour size={12} weight="bold" />
+          {preview?.totalItems ?? preview?.contentItems?.length ?? 0} tiles
+        </Badge>
         <Badge variant="secondary" className="text-xs gap-1">
           <Timer size={12} weight="bold" />
           {preview?.rounds || 3} rounds

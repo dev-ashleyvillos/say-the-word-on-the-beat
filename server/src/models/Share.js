@@ -73,7 +73,9 @@ const shareSchema = new mongoose.Schema({
     rounds: Number,
     bpm: Number,
     hasCustomAudio: Boolean,
-    difficulty: String
+    difficulty: String,
+    sequential: Boolean,
+    totalItems: Number
   }
 });
 

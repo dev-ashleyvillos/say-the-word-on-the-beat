@@ -20,7 +20,8 @@ router.use(sessionMiddleware);
 
 // Helper function to extract preview data from config
 function extractPreview(config) {
-  const contentItems = (config.content || config.images || [])
+  const allItems = config.content || config.images || [];
+  const contentItems = allItems
     .slice(0, 4)
     .map(item => {
       if (typeof item === 'string') {
@@ -34,10 +35,12 @@ function extractPreview(config) {
 
   return {
     contentItems,
+    totalItems: allItems.length,
     rounds: config.rounds || 3,
     bpm: config.bpm || 91,
     hasCustomAudio: !!config.audio,
-    difficulty: config.difficulty || 'medium'
+    difficulty: config.difficulty || 'medium',
+    sequential: !!config.sequential
   };
 }
 
@@ -47,17 +50,28 @@ router.get('/public', async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
-    const sort = req.query.sort === 'newest'
-      ? { createdAt: -1 }
-      : { likes: -1, createdAt: -1 };
+    const sort = req.query.sort === 'popular'
+      ? { likes: -1, createdAt: -1 }
+      : { createdAt: -1 };
+
+    const query = { isPublic: true };
+    // Fixed Order is its own bucket regardless of the underlying difficulty
+    // value it was saved with; the other buckets exclude it so the four
+    // options stay mutually exclusive.
+    if (req.query.difficulty === 'fixedOrder') {
+      query['preview.sequential'] = true;
+    } else if (['easy', 'medium', 'hard'].includes(req.query.difficulty)) {
+      query['preview.difficulty'] = req.query.difficulty;
+      query['preview.sequential'] = { $ne: true };
+    }
 
     const [shares, total] = await Promise.all([
-      Share.find({ isPublic: true })
+      Share.find(query)
         .sort(sort)
         .skip(skip)
         .limit(limit)
         .select('guid title likes preview createdAt likedBy'),
-      Share.countDocuments({ isPublic: true })
+      Share.countDocuments(query)
     ]);
 
     // Add hasLiked field based on current session
@@ -129,8 +143,12 @@ router.post('/',
   timingValidator,
   async (req, res) => {
   try {
-    const { config, imageIds, audioId, expiresInDays, isPublic, title } = req.body;
-    
+    const { config, imageIds, audioId, expiresInDays, title } = req.body;
+    // No login yet, so there's no private/personal library to keep shares out of —
+    // every share is public until accounts (Firebase/Auth0) land. Ignore any
+    // isPublic value the client sends.
+    const isPublic = true;
+
     if (!config) {
       return res.status(400).json({ error: 'config is required' });
     }
@@ -148,9 +166,9 @@ router.post('/',
       return res.status(400).json({ error: 'Customize your game before sharing — change the content, audio, BPM, or difficulty first.' });
     }
 
-    // Public shares additionally require actual content items
-    if (isPublic && !hasContent) {
-      return res.status(400).json({ error: 'Public games must have at least one content item. Add some images or emojis first.' });
+    // Every share is public now, so every share needs actual content items
+    if (!hasContent) {
+      return res.status(400).json({ error: 'Add at least one image or emoji before sharing — a customized BPM or audio alone isn\'t enough for a public game.' });
     }
 
     // Session-based cooldown check (skipped in development)
@@ -260,6 +278,40 @@ router.post('/:guid/like', likeLimiter, async (req, res) => {
   } catch (err) {
     console.error('Error toggling like:', err);
     res.status(500).json({ error: 'Failed to toggle like' });
+  }
+});
+
+// PATCH /api/shares/:guid/title - Rename a public share
+// No creator/session check: matches the existing DELETE route below, since
+// there's no login yet to tie a share to whoever made it.
+router.patch('/:guid/title', likeLimiter, async (req, res) => {
+  try {
+    const title = req.body.title;
+
+    if (typeof title !== 'string') {
+      return res.status(400).json({ error: 'title is required' });
+    }
+
+    const sanitizedTitle = title
+      .slice(0, 100)
+      .replace(/<[^>]*>/g, '')
+      .replace(/[<>]/g, '')
+      .trim();
+
+    const share = await Share.findOneAndUpdate(
+      { guid: req.params.guid },
+      { $set: { title: sanitizedTitle } },
+      { new: true }
+    );
+
+    if (!share) {
+      return res.status(404).json({ error: 'Share not found' });
+    }
+
+    res.json({ guid: share.guid, title: share.title });
+  } catch (err) {
+    console.error('Error renaming share:', err);
+    res.status(500).json({ error: 'Failed to rename share' });
   }
 });
 
